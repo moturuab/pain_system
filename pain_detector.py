@@ -17,7 +17,7 @@ class PainDetector:
         :param fan_checkpoint: FAN checkpoint path, if empty will download pretrained model
         :param image_size: image size after face detection, must correspond to afar_checkpoint
         """
-        self.device = 'mps' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ref_frames = []
         self.image_size = image_size
         self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # Histogram normalizer

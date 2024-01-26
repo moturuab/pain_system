@@ -25,6 +25,8 @@ import smtplib
 # Import the email modules we'll need
 from email.message import EmailMessage
 
+from point_grey import PgCamera
+
 faulthandler.enable()
 
 class VideoApp:
@@ -34,17 +36,22 @@ class VideoApp:
         self.window.title(window_title)
         self.model_location = model_location
 
-        # self.pain_detector = PainDetector(image_size=160,
-        #                             checkpoint_path='/project/6005917/moturuab/dementia-pain/pain_detection_demo/checkpoints/50342566/50343918_3/model_epoch4.pt',
-        #                             num_outputs=40)
         self.pain_detector = PainDetector(image_size=160,
                                           checkpoint_path=self.model_location,
                                           num_outputs=40)
 
         self.reference_images = []
 
-        self.video_source = 1
-        self.vid = cv2.VideoCapture(self.video_source)
+        self.video_source = 0
+        self.width = 1920
+        self.height = 1080
+        self.offset = 0
+        roi = [self.offset, self.offset, self.width, self.height]  #x-offset, y-offset, width, height
+        frame_rate = 15.0
+        gain = 29
+        exposure_ms = 20.
+        self.vid = PgCamera(roi, frame_rate, gain, exposure_ms)
+        self.vid.open_camera()
 
         self.photo_frame = tk.Frame(window)
         self.photo_frame.pack(side=tk.TOP, padx=10, pady=10)
@@ -52,8 +59,7 @@ class VideoApp:
         self.text_frame = tk.Frame(window)
         self.text_frame.pack(side=tk.TOP, padx=10, pady=10)
 
-        self.canvas = tk.Canvas(window, width=self.vid.get(cv2.CAP_PROP_FRAME_WIDTH),
-                                height=self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.canvas = tk.Canvas(window, width=self.width, height=self.height)
 
         self.buttons_frame = tk.Frame(window)
         self.buttons_frame.pack(side=tk.RIGHT, padx=100, pady=100)
@@ -164,7 +170,7 @@ class VideoApp:
         while self.running:
             with (self.lock):
                 self.indices.append(self.index)
-                pain_score = self.pain_detector.predict_pain(self.frame)
+                pain_score = self.pain_detector.predict_pain(self.frame_combined)
                 self.pain_scores.append(pain_score)
 
                 if not self.pain_moment and pain_score > self.threshold:
@@ -231,20 +237,21 @@ class VideoApp:
 
     def update_frame(self):
         while True:
-            ret, self.frame = self.vid.read()
-            self.frame = cv2.putText(self.frame, str(self.index),(20, 45), cv2.FONT_HERSHEY_SIMPLEX,
+            self.frame = self.vid.read()
+            self.frame_combined = cv2.merge((self.frame, self.frame, self.frame))
+            self.frame_combined = cv2.putText(self.frame_combined, str(self.index),(20, 45), cv2.FONT_HERSHEY_SIMPLEX,
                                      1, (0, 255, 255),2, cv2.LINE_4)
             if self.running:
-                self.frames.append(self.frame)
+                self.frames.append(self.frame_combined)
                 self.count.append(self.index)
                 self.times.append(datetime.datetime.now().strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3])
                 self.index += 1
-            frame = cv2.resize(self.frame, (int(5 * self.vid.get(cv2.CAP_PROP_FRAME_WIDTH) // 7),
-                                            int(5 * self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT) // 7)))
+            
+            self.frame_combined = cv2.resize(self.frame_combined, (int(self.width // 2), int(self.height // 2)))
 
-            if ret:
-                self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-                self.canvas.create_image(10, 10, image=self.photo, anchor=tk.NW)
+            #if ret:
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.frame_combined, cv2.COLOR_BGR2RGB)))
+            self.canvas.create_image(10, 10, image=self.photo, anchor=tk.NW)
             self.window.update()
 
     def select_participant(self):
@@ -254,7 +261,7 @@ class VideoApp:
         for widget in self.photo_frame.winfo_children():
             if isinstance(widget, tk.Label):
                 widget.destroy()
-        self.participant = filedialog.askdirectory(initialdir=os.getcwd() + '/pain_detection_demo/pain_data_collection/location_1/')
+        self.participant = filedialog.askdirectory(initialdir=os.getcwd() + '/data/location_1/')
         for (root_, dirs, files) in os.walk(self.participant):
             if files:
                 for file in files:
@@ -281,39 +288,41 @@ class VideoApp:
 
     def take_reference_image(self):
         if len(self.reference_images) < 3:
-            ret, frame = self.vid.read()
-            if ret:
-                path = os.path.join(self.participant,
-                                    'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
+            frame = self.vid.read()
+            frame = cv2.merge((frame, frame, frame))
+            #if ret:
+            path = os.path.join(self.participant,
+                                'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
 
-                self.pain_detector.add_references([frame])
-                # prepped_image = self.pain_detector.ref_frames[-1]
-                cv2.imwrite(path, frame)
-                image = Image.open(path)
-                aspect_ratio = image.width / image.height
-                image = image.resize((int(100 * aspect_ratio), 100))
-                photo = ImageTk.PhotoImage(image)
-                img_label = tk.Label(self.photo_frame, image=photo, compound="left")
-                img_label.image = photo
-                img_label.pack(fill=tk.BOTH, side=tk.LEFT)
-                self.reference_images.append(photo)
-                if len(self.reference_images) == 3:
-                    self.btn_start["state"] = "normal"
-                    self.btn_take_image["state"] = "disabled"
-                    self.text.config(text='Please start the session when ready.')
-                self.window.update()
+            self.pain_detector.add_references([np.asarray(frame)])
+            # prepped_image = self.pain_detector.ref_frames[-1]
+            cv2.imwrite(path, frame)
+            image = Image.open(path)
+            aspect_ratio = image.width / image.height
+            image = image.resize((int(100 * aspect_ratio), 100))
+            photo = ImageTk.PhotoImage(image)
+            img_label = tk.Label(self.photo_frame, image=photo, compound="left")
+            img_label.image = photo
+            img_label.pack(fill=tk.BOTH, side=tk.LEFT)
+            self.reference_images.append(photo)
+            if len(self.reference_images) == 3:
+                self.btn_start["state"] = "normal"
+                self.btn_take_image["state"] = "disabled"
+                self.text.config(text='Please start the session when ready.')
+            self.window.update()
 
     def __del__(self):
-        if self.vid.isOpened():
-            self.video_thread.join()
-            self.model_thread.join()
-            self.vid.release()
+        #if self.vid.isOpened():
+        self.video_thread.join()
+        self.model_thread.join()
+        self.vid.release()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.state("zoomed")
     root.resizable(width=True, height=True)
     location = "Test"
-    model = "/Users/abhishekmoturu/Desktop/dementia-pain/pain_detection_demo/checkpoints/50342566/50343918_3/model_epoch4.pt"
+    model = r"C:\Users\Thomas\Desktop\pain_system\model_epoch4.pt"
     app = VideoApp(root, location + " Vision System", model)
     root.mainloop()

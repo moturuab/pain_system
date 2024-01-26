@@ -152,7 +152,7 @@ class PgCamera:
                 else:
                     logging.warning('    ROI: Offset Y not available...')
                     return False
-                logging.info('    ROI successfully set to {0} [x, y, width, height]\n'.format(roi))
+                logging.info('    ROI successfully set to {0} [x, y, width, height]\n'.format(self.roi))
             except Exception as ex:
                 logging.error('    Could not set ROI. Exeption: {0}.'.format(ex))
               
@@ -169,7 +169,7 @@ class PgCamera:
         if self.frame_rate > rate_max:
             logging.warning("Attempt to set fps greater than max, setting to {0}".format(rate_max))
             self.frame_rate = rate_max
-        elif frame_rate < rate_min:
+        elif self.frame_rate < rate_min:
             logging.warning("Attempt to set fps less than min, setting to {0}".format(rate_min))
             self.frame_rate = rate_min
 
@@ -335,7 +335,7 @@ class PgCamera:
                 return
             else:
                 image_converted = np.array(image_result.GetData(), dtype="uint8").reshape((image_result.GetHeight(), 
-                                                                                           image_result.GetWidth()) );
+                                                                                          image_result.GetWidth()));
                 image_result.Release()
                 return image_converted
 
@@ -349,7 +349,7 @@ class PgCamera:
         del self.cam
         self.system.ReleaseInstance()
         logging.info("Camera released.")
-
+''' 
 #%%
 if __name__ == "__main__":
     """ 
@@ -469,5 +469,5 @@ if __name__ == "__main__":
                 cv2.destroyAllWindows()
                 pgCam.release()
                 break
-        
+'''
         
