@@ -36,23 +36,6 @@ class VideoApp:
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
         self.emails = emails
-        
-        '''
-        while True:
-            if self.connect_to_network(self.ltch_wifi):
-                break
-
-        while True:
-            if self.connect_to_network(self.wemo_wifi):
-                break
-
-        while True:
-            self.devices = pywemo.discover_devices()
-            if len(self.devices) > 0:
-                break
-        
-        self.devices[0].off()
-        '''
 
         self.pain_detector = PainDetector(image_size=160, checkpoint_path=self.model_location, num_outputs=40)
 
@@ -90,20 +73,24 @@ class VideoApp:
         self.blank.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
         font = fnt.Font(size=16)
-        self.btn_stop = tk.Button(self.buttons_frame, text="Stop Session", font=font, width=20, height=3,
+        self.btn_stop = tk.Button(self.buttons_frame, text="Stop Session", font=font, width=20, height=2,
                                   command=self.stop_video)
         self.btn_stop.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
-        self.btn_start = tk.Button(self.buttons_frame, text="Start Session", font=font, width=20, height=3,
+        self.btn_light = tk.Button(self.buttons_frame, text="Checked Resident", font=font, width=20, height=2,
+                                   command=self.turn_off_light)
+        self.btn_light.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
+
+        self.btn_start = tk.Button(self.buttons_frame, text="Start Session", font=font, width=20, height=2,
                                    command=self.start_video)
         self.btn_start.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
-        self.btn_take_image = tk.Button(self.buttons_frame, text="Take Reference Image", font=font, width=20, height=3,
+        self.btn_take_image = tk.Button(self.buttons_frame, text="Take Reference Image", font=font, width=20, height=2,
                                         command=self.take_reference_image)
         self.btn_take_image.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
         self.btn_select_participant = tk.Button(self.buttons_frame, text="Select Participant", font=font, width=20,
-                                                height=3, command=self.select_participant)
+                                                height=2, command=self.select_participant)
         self.btn_select_participant.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
         self.font = fnt.Font(size=27)
@@ -119,6 +106,9 @@ class VideoApp:
         self.btn_take_image["state"] = "disabled"
         self.btn_start["state"] = "disabled"
         self.btn_stop["state"] = "disabled"
+        self.btn_light["state"] = "disabled"
+
+        self.turn_off_light()
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, padx=70)
         self.running = False
@@ -182,6 +172,25 @@ class VideoApp:
             except:
                 continue
 
+    def turn_off_light(self):
+        self.btn_light["state"] = "disabled"
+        self.light_off_thread = threading.Thread(target=self.light_off, daemon=True)
+        self.light_off_thread.start()
+        
+    def light_off(self):
+        if self.btn_start["state"] == "disabled" and self.running:
+            self.btn_stop["state"] = "normal"
+        while True:
+            if self.connect_to_network(self.wemo_wifi):
+                break
+        while True:
+            try:
+                self.devices = pywemo.discover_devices()
+                self.devices[0].off()
+                break
+            except:
+                continue
+
     def send_email(self):
         while True:
             if self.connect_to_network(self.ltch_wifi):
@@ -224,12 +233,17 @@ class VideoApp:
         while self.running:
             with (self.lock):
                 self.indices.append(self.index)
-                pain_score = self.pain_detector.predict_pain(self.frame)
+                try:
+                    pain_score = self.pain_detector.predict_pain(self.frame)
+                except:
+                    pain_score = np.nan
                 self.pain_scores.append(pain_score)
 
                 if not self.pain_moment and pain_score > self.threshold:
                     self.pain_moment = True
                     self.start_index = self.index
+                    self.btn_light["state"] = "normal"
+                    self.btn_stop["state"] = "disabled"
                     self.text.config(text='Session ongoing: suspected pain expression.')
                     self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                     self.light_thread.start()
@@ -301,10 +315,9 @@ class VideoApp:
                 self.index += 1
             
             self.frame = cv2.resize(self.frame, (int(0.41*self.width), int(0.41*self.height)))
-            if self.pain_moment:
+            if self.btn_light["state"] == "normal":
                 self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0,0,255))
             else:
-                
                 self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240,240,240))
 
             self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)))
@@ -318,7 +331,7 @@ class VideoApp:
         for widget in self.photo_frame.winfo_children():
             if isinstance(widget, tk.Label):
                 widget.destroy()
-        self.participant = filedialog.askdirectory(initialdir=os.getcwd() + '/data/location_1/')
+        self.participant = filedialog.askdirectory(initialdir='F:\Lumsden')
         for (root_, dirs, files) in os.walk(self.participant):
             if files:
                 for file in files:
@@ -346,12 +359,10 @@ class VideoApp:
     def take_reference_image(self):
         if len(self.reference_images) < 3:
             frame = self.vid.read()
-            #if ret:
             path = os.path.join(self.participant,
                                 'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
 
             self.pain_detector.add_references([np.asarray(frame)])
-            # prepped_image = self.pain_detector.ref_frames[-1]
             cv2.imwrite(path, frame)
             image = Image.open(path)
             aspect_ratio = image.width / image.height
@@ -388,7 +399,9 @@ if __name__ == "__main__":
     threshold = 0.3
     ltch_wifi = 'uofrGuest'
     wemo_wifi = 'WeMo.Switch.ED0'
-    emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca']
+    emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca'] 
+    # Lumsden: heritagehome@rqhealth.ca
+    # Saskatoon: ch.nurses@saskhealthauthority.ca
 
     app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, emails)
     root.mainloop()
