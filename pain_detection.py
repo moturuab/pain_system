@@ -13,32 +13,48 @@ import pain_detector
 from pain_detector import *
 import torch
 import csv
+import pywemo
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from collections import deque
 import itertools
 import faulthandler
-# Import smtplib for the actual sending function
 import smtplib
-
-# Import the email modules we'll need
+import subprocess
 from email.message import EmailMessage
-
 from point_grey import PgCamera
-
 faulthandler.enable()
 
 class VideoApp:
-    def __init__(self, window, window_title, model_location):
-        #self.send_email()
+    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, ltch_wifi, wemo_wifi, emails):
         self.window = window
         self.window.title(window_title)
         self.model_location = model_location
+        self.location = location
+        self.threshold = threshold
+        self.ltch_wifi = ltch_wifi
+        self.wemo_wifi = wemo_wifi
+        self.emails = emails
+        
+        '''
+        while True:
+            if self.connect_to_network(self.ltch_wifi):
+                break
 
-        self.pain_detector = PainDetector(image_size=160,
-                                          checkpoint_path=self.model_location,
-                                          num_outputs=40)
+        while True:
+            if self.connect_to_network(self.wemo_wifi):
+                break
+
+        while True:
+            self.devices = pywemo.discover_devices()
+            if len(self.devices) > 0:
+                break
+        
+        self.devices[0].off()
+        '''
+
+        self.pain_detector = PainDetector(image_size=160, checkpoint_path=self.model_location, num_outputs=40)
 
         self.reference_images = []
 
@@ -46,9 +62,9 @@ class VideoApp:
         self.width = 1920
         self.height = 1080
         self.offset = 0
-        roi = [self.offset, self.offset, self.width, self.height]  #x-offset, y-offset, width, height
+        roi = [self.offset, self.offset, self.width, self.height]
         frame_rate = 15.0
-        gain = 29
+        gain = 34
         exposure_ms = 20.
         self.vid = PgCamera(roi, frame_rate, gain, exposure_ms)
         self.vid.open_camera()
@@ -62,28 +78,32 @@ class VideoApp:
         self.canvas = tk.Canvas(window, width=self.width, height=self.height)
 
         self.buttons_frame = tk.Frame(window)
-        self.buttons_frame.pack(side=tk.RIGHT, padx=100, pady=100)
+        self.buttons_frame.pack(side=tk.RIGHT, padx=100, pady=50)
 
         img_label = tk.Label(self.photo_frame, image=None, compound="left")
         img_label.image = None
         img_label.pack(fill=tk.BOTH, side=tk.LEFT, padx=50, pady=50)
 
-        font = fnt.Font(size=16)
+        font = fnt.Font(size=63)
 
-        self.btn_stop = tk.Button(self.buttons_frame, text="Stop Session", font=font, width=20, height=4,
+        self.blank = tk.Label(self.buttons_frame, text=" ", font=font)
+        self.blank.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
+
+        font = fnt.Font(size=16)
+        self.btn_stop = tk.Button(self.buttons_frame, text="Stop Session", font=font, width=20, height=3,
                                   command=self.stop_video)
         self.btn_stop.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
-        self.btn_start = tk.Button(self.buttons_frame, text="Start Session", font=font, width=20, height=4,
+        self.btn_start = tk.Button(self.buttons_frame, text="Start Session", font=font, width=20, height=3,
                                    command=self.start_video)
         self.btn_start.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
-        self.btn_take_image = tk.Button(self.buttons_frame, text="Take Reference Image", font=font, width=20, height=4,
+        self.btn_take_image = tk.Button(self.buttons_frame, text="Take Reference Image", font=font, width=20, height=3,
                                         command=self.take_reference_image)
         self.btn_take_image.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
         self.btn_select_participant = tk.Button(self.buttons_frame, text="Select Participant", font=font, width=20,
-                                                height=4, command=self.select_participant)
+                                                height=3, command=self.select_participant)
         self.btn_select_participant.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
 
         self.font = fnt.Font(size=27)
@@ -100,10 +120,10 @@ class VideoApp:
         self.btn_start["state"] = "disabled"
         self.btn_stop["state"] = "disabled"
 
-        self.canvas.pack(fill=tk.BOTH, side=tk.LEFT)
+        self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, padx=70)
         self.running = False
 
-        self.MAX_FRAMES = 250  # 20 (20 seconds) * 2 (before and after the pain moment) * 15 (at 15 frames per second)
+        self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after the pain moment) * 15 (at 15 frames per second) + 100 frames
         self.threshold = 0.3
 
         self.pain_scores = deque(maxlen=self.MAX_FRAMES)
@@ -123,6 +143,20 @@ class VideoApp:
 
         self.video_thread = threading.Thread(target=self.update_frame, daemon=True)
         self.video_thread.start()
+        
+    def connect_to_network(self, network_name):
+        command = f'netsh wlan connect name="{network_name}" ssid="{network_name}"'
+        subprocess.run(command, shell=True)
+        return self.get_ssid(network_name)
+        
+    def get_ssid(self, network_name):
+        data_strings = []
+        while 'Profile' not in data_strings:
+            raw_wifi = subprocess.check_output(['netsh', 'WLAN', 'show', 'network'])
+            raw_wifi = subprocess.check_output(['netsh', 'WLAN', 'show', 'interfaces'])
+            data_strings = raw_wifi.decode('utf-8').split()
+        index = data_strings.index('SSID')
+        return data_strings[index + 2] == network_name
 
     def start_video(self):
         self.running = True
@@ -135,31 +169,51 @@ class VideoApp:
         self.log_entry(str(self.participant_number) + ',' + self.start_time.strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3])
 
     def turn_on_light(self):
-        pass
+        while True:
+            if self.connect_to_network(self.wemo_wifi):
+                break
+        while True:
+            try:
+                self.devices = pywemo.discover_devices()
+                self.devices[0].on()
+                self.email_thread = threading.Thread(target=self.send_email, daemon=True)
+                self.email_thread.start()
+                break
+            except:
+                continue
 
     def send_email(self):
-        # creates SMTP session
-        s = smtplib.SMTP('smtp.gmail.com', 587)
+        while True:
+            if self.connect_to_network(self.ltch_wifi):
+                break
+        while True:
+            try:
+                # creates SMTP session
+                s = smtplib.SMTP('smtp.gmail.com')
 
-        # start TLS for security
-        s.starttls()
+                # start TLS for security
+                s.starttls()
 
-        # authentication
-        s.login("abhi.saim@gmail.com", "orut ntbi xxjq hrqm")
+                # authentication
+                s.login("uofr.healthpsychologylab@gmail.com", "zdxb nsxv fkir mljf")
 
-        # create email message
-        msg = EmailMessage()
-        msg['Subject'] = 'Vision System Alert: Participant ' + str(self.participant_number)
-        msg['From'] = 'abhi.saim@gmail.com'
-        msg['To'] = 'abhishek.moturu@mail.utoronto.ca'
-        msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                        ' as a suspected pain expression has been detected.')
+                # create email message
+                for e in self.emails:
+                    msg = EmailMessage()
+                    msg['Subject'] = 'Vision System Alert: Participant ' + str(self.participant_number)
+                    msg['From'] = 'uofr.healthpsychologylab@gmail.com'
+                    msg['To'] = e
+                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                    ' as a suspected pain expression has been detected.')
 
-        # sending the mail
-        s.send_message(msg)
+                    # sending the mail
+                    s.send_message(msg)
 
-        # terminating the session
-        s.quit()
+                # terminating the session
+                s.quit()
+                break
+            except:
+                continue
 
     def log_entry(self, entry, end=''):
         f = open("system_log.txt", "a")
@@ -170,15 +224,15 @@ class VideoApp:
         while self.running:
             with (self.lock):
                 self.indices.append(self.index)
-                pain_score = self.pain_detector.predict_pain(self.frame_combined)
+                pain_score = self.pain_detector.predict_pain(self.frame)
                 self.pain_scores.append(pain_score)
 
                 if not self.pain_moment and pain_score > self.threshold:
                     self.pain_moment = True
                     self.start_index = self.index
-                    self.turn_on_light()
-                    self.send_email()
                     self.text.config(text='Session ongoing: suspected pain expression.')
+                    self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
+                    self.light_thread.start()
 
                 if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.indices[-1] - self.indices[0] < self.MAX_FRAMES):
                     self.end_index = self.index
@@ -238,19 +292,22 @@ class VideoApp:
     def update_frame(self):
         while True:
             self.frame = self.vid.read()
-            self.frame_combined = cv2.merge((self.frame, self.frame, self.frame))
-            self.frame_combined = cv2.putText(self.frame_combined, str(self.index),(20, 45), cv2.FONT_HERSHEY_SIMPLEX,
+            self.frame = cv2.putText(self.frame, str(self.index),(20, 45), cv2.FONT_HERSHEY_SIMPLEX,
                                      1, (0, 255, 255),2, cv2.LINE_4)
             if self.running:
-                self.frames.append(self.frame_combined)
+                self.frames.append(self.frame)
                 self.count.append(self.index)
                 self.times.append(datetime.datetime.now().strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3])
                 self.index += 1
             
-            self.frame_combined = cv2.resize(self.frame_combined, (int(self.width // 2), int(self.height // 2)))
+            self.frame = cv2.resize(self.frame, (int(0.41*self.width), int(0.41*self.height)))
+            if self.pain_moment:
+                self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0,0,255))
+            else:
+                
+                self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240,240,240))
 
-            #if ret:
-            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.frame_combined, cv2.COLOR_BGR2RGB)))
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)))
             self.canvas.create_image(10, 10, image=self.photo, anchor=tk.NW)
             self.window.update()
 
@@ -289,7 +346,6 @@ class VideoApp:
     def take_reference_image(self):
         if len(self.reference_images) < 3:
             frame = self.vid.read()
-            frame = cv2.merge((frame, frame, frame))
             #if ret:
             path = os.path.join(self.participant,
                                 'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
@@ -315,6 +371,8 @@ class VideoApp:
         #if self.vid.isOpened():
         self.video_thread.join()
         self.model_thread.join()
+        self.email_thread.join()
+        self.light_thread.join()
         self.vid.release()
 
 
@@ -322,7 +380,15 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.state("zoomed")
     root.resizable(width=True, height=True)
-    location = "Test"
     model = r"C:\Users\Thomas\Desktop\pain_system\model_epoch4.pt"
-    app = VideoApp(root, location + " Vision System", model)
+    ssd = ""
+
+    # modify the following as needed
+    location = 'Test'
+    threshold = 0.3
+    ltch_wifi = 'uofrGuest'
+    wemo_wifi = 'WeMo.Switch.ED0'
+    emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca']
+
+    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, emails)
     root.mainloop()

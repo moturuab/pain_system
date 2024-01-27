@@ -331,11 +331,13 @@ class PgCamera:
         #get next image: if it is good, return it
         try:
             image_result = self.cam.GetNextImage()
+            i = PySpin.ImageProcessor()
+            image_converted = i.Convert(image_result, PySpin.PixelFormat_BGR8)
             if image_result.IsIncomplete():
                 return
             else:
-                image_converted = np.array(image_result.GetData(), dtype="uint8").reshape((image_result.GetHeight(), 
-                                                                                          image_result.GetWidth()));
+                image_converted = np.array(image_converted.GetData(), dtype="uint8").reshape((image_result.GetHeight(), 
+                                                                                          image_result.GetWidth(), 3))
                 image_result.Release()
                 return image_converted
 
