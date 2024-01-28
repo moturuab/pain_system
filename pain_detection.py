@@ -13,6 +13,7 @@ import pain_detector
 from pain_detector import *
 import torch
 import csv
+from hotspot_autologin import *
 import pywemo
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -135,7 +136,9 @@ class VideoApp:
         self.video_thread.start()
         
     def connect_to_network(self, network_name):
-        command = f'netsh wlan connect name="{network_name}" ssid="{network_name}"'
+        #if network_name == self.ltch_wifi:
+        #    login_to_wifi()
+        command = f'netsh wlan connect name={network_name} ssid={network_name}'
         subprocess.run(command, shell=True)
         return self.get_ssid(network_name)
         
@@ -193,8 +196,10 @@ class VideoApp:
 
     def send_email(self):
         while True:
-            if self.connect_to_network(self.ltch_wifi):
+            if not login_to_wifi():
                 break
+            #if self.connect_to_network(self.ltch_wifi):
+            #    break
         while True:
             try:
                 # creates SMTP session
@@ -361,21 +366,27 @@ class VideoApp:
             frame = self.vid.read()
             path = os.path.join(self.participant,
                                 'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
-
-            self.pain_detector.add_references([np.asarray(frame)])
-            cv2.imwrite(path, frame)
-            image = Image.open(path)
-            aspect_ratio = image.width / image.height
-            image = image.resize((int(100 * aspect_ratio), 100))
-            photo = ImageTk.PhotoImage(image)
-            img_label = tk.Label(self.photo_frame, image=photo, compound="left")
-            img_label.image = photo
-            img_label.pack(fill=tk.BOTH, side=tk.LEFT)
-            self.reference_images.append(photo)
-            if len(self.reference_images) == 3:
-                self.btn_start["state"] = "normal"
-                self.btn_take_image["state"] = "disabled"
-                self.text.config(text='Please start the session when ready.')
+            #while len(self.pain_detector.ref_frames) < 3:
+            try:
+                before = len(self.pain_detector.ref_frames)
+                self.pain_detector.add_references([np.asarray(frame)])
+                after = len(self.pain_detector.ref_frames)
+                if before != after:
+                    cv2.imwrite(path, frame)
+                    image = Image.open(path)
+                    aspect_ratio = image.width / image.height
+                    image = image.resize((int(100 * aspect_ratio), 100))
+                    photo = ImageTk.PhotoImage(image)
+                    img_label = tk.Label(self.photo_frame, image=photo, compound="left")
+                    img_label.image = photo
+                    img_label.pack(fill=tk.BOTH, side=tk.LEFT)
+                    self.reference_images.append(photo)
+                    if len(self.reference_images) == 3:
+                        self.btn_start["state"] = "normal"
+                        self.btn_take_image["state"] = "disabled"
+                        self.text.config(text='Please start the session when ready.')
+            except:
+                pass
             self.window.update()
 
     def __del__(self):
@@ -397,11 +408,13 @@ if __name__ == "__main__":
     # modify the following as needed
     location = 'Test'
     threshold = 0.3
-    ltch_wifi = 'uofrGuest'
-    wemo_wifi = 'WeMo.Switch.ED0'
+    ltch_wifi = '"RQHR Guest"'
+    wemo_wifi = 'WeMo.Switch.FFB'
     emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca'] 
     # Lumsden: heritagehome@rqhealth.ca
     # Saskatoon: ch.nurses@saskhealthauthority.ca
+
+    login_to_wifi()
 
     app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, emails)
     root.mainloop()
