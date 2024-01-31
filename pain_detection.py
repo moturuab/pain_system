@@ -21,6 +21,7 @@ from collections import deque
 import itertools
 import faulthandler
 import smtplib
+import argparse
 import subprocess
 from email.message import EmailMessage
 from point_grey import PgCamera
@@ -33,6 +34,14 @@ faulthandler.enable()
 # cd Desktop\pain_system
 # pain_env\Scripts\activate
 # python pain_detection.py
+
+parser = argparse.ArgumentParser(prog='Vision System', description='This is a vision system for monitoring pain.')
+parser.add_argument('-threshold', type=float, default=0.2422)
+parser.add_argument('-from_email', type=str, default='uofr.healthpsychologylab@gmail.com')
+parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gmail.com')
+parser.add_argument('-wemo_code', type=str, default='12E')
+parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
+arg_dict = parser.parse_args()
 
 class VideoApp:
     def __init__(self, window, window_title, ssd_location, model_location, location, threshold, ltch_wifi, wemo_wifi, from_email, to_emails):
@@ -168,7 +177,7 @@ class VideoApp:
         self.btn_select_participant["state"] = "disabled"
         self.start_time = datetime.datetime.now()
         self.log_entry('\n' + str(self.participant_number) + ',' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3], 'summary_log.txt')
-        self.log_entry('----------\nParticipant ' + str(self.participant_number) + '\n', 'full_log.txt')
+        self.log_entry('----------\nParticipant ' + str(self.participant_number) + ' (threshold: ' + str(arg_dict.threshold) + ')\n', 'full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
 
     def turn_on_light(self):
@@ -223,19 +232,13 @@ class VideoApp:
                 # authentication
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
-                # create email message
                 for email in self.to_emails:
                     msg = EmailMessage()
                     msg['Subject'] = 'Vision System Alert: Participant ' + str(self.participant_number)
                     msg['From'] = self.from_email
                     msg['To'] = email
-                    if first:
-                        msg.set_content('Session started for Participant ' + str(self.participant_number) + '.')
-                    else:
-                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                        ' as a suspected pain expression has been detected.')
-
-                    # sending the mail
+                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                    ' as a suspected pain expression has been detected.')
                     s.send_message(msg)
 
                 # terminating the session
@@ -332,7 +335,6 @@ class VideoApp:
             writer.writerows(zip(times, inds, frms, pain_scores))
 
     def update_frame(self):
-        self.send_email(True)
         self.turn_off_light()
         self.btn_select_participant["state"] = "normal"
         self.text.config(text='Please select a participant.')
@@ -433,17 +435,17 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.state("zoomed")
     root.resizable(width=True, height=True)
-    model = r"C:\Users\Dr Thomas\Desktop\pain_system\model_epoch4.pt"
+    model = "model_epoch4.pt"
+    threshold = arg_dict.threshold
+    from_email = arg_dict.from_email
+    to_emails = [arg_dict.from_email, arg_dict.to_email]
 
     # modify the following as needed
-    threshold = 0.2422
     # 0.2422 was chosen based on the optimal threshold based on the ROC AUC curve for FACS pain score of 4
     # we can also use the median values in the table below to make thresholds for each FACS pain score
-    ssd = 'G:\CentralHavenSaskatoon'
+    ssd = arg_dict.ssd
     ltch_wifi = "PainStudy"
-    wemo_wifi = 'WeMo.Switch.12E'
-    from_email = 'uofr.healthpsychologylab@gmail.com'
-    to_emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca'] 
+    wemo_wifi = 'WeMo.Switch.' + arg_dict.wemo_code
     # Lumsden: heritagehome@rqhealth.ca
     # CentralHavenSaskatoon: ch.nurses@saskhealthauthority.ca
 
@@ -452,7 +454,7 @@ if __name__ == "__main__":
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
-# the following table gives the average thresholds for the corresponding FACS pain scores in the Regina Heat Dataset
+# the following table gives the median/mean thresholds for the corresponding FACS pain scores in the Regina Heat Dataset
 '''
     Label    median      mean       std   count
 0     0.0  0.218241  0.511624  0.684555  192171
@@ -472,5 +474,8 @@ if __name__ == "__main__":
 14   14.0  2.505320  2.470200  0.356324      59
 15   15.0  1.705458  1.747546  0.364064      21
 16   16.0  1.405468  1.403963  0.114371      20
-'''
 
+Note that 0.2422 is used as the default threshold
+since it was was chosen based on the optimal threshold
+for the ROC AUC curve for a FACS pain score of 4.
+'''
