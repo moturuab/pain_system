@@ -13,7 +13,6 @@ import pain_detector
 from pain_detector import *
 import torch
 import csv
-from hotspot_autologin import *
 import pywemo
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -25,25 +24,35 @@ import smtplib
 import subprocess
 from email.message import EmailMessage
 from point_grey import PgCamera
+
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w')
+
 faulthandler.enable()
 
+# cd Desktop\pain_system
+# pain_env\Scripts\activate
+# python pain_detection.py
+
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, ltch_wifi, wemo_wifi, emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
-        self.window.title(window_title)
+        self.window_title = window_title
+        self.window.title(self.window_title)
+        self.ssd_location = ssd_location
         self.model_location = model_location
         self.location = location
         self.threshold = threshold
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
-        self.emails = emails
+        self.from_email = from_email
+        self.to_emails = to_emails
 
         self.pain_detector = PainDetector(image_size=160, checkpoint_path=self.model_location, num_outputs=40)
-
         self.reference_images = []
 
         self.video_source = 0
-        self.width = 1920
+        self.width = 1510
         self.height = 1080
         self.offset = 0
         roi = [self.offset, self.offset, self.width, self.height]
@@ -59,7 +68,7 @@ class VideoApp:
         self.text_frame = tk.Frame(window)
         self.text_frame.pack(side=tk.TOP, padx=10, pady=10)
 
-        self.canvas = tk.Canvas(window, width=self.width, height=self.height)
+        self.canvas = tk.Label(window, width=self.width, height=self.height)
 
         self.buttons_frame = tk.Frame(window)
         self.buttons_frame.pack(side=tk.RIGHT, padx=100, pady=50)
@@ -96,7 +105,7 @@ class VideoApp:
 
         self.font = fnt.Font(size=27)
 
-        self.text = tk.Label(window, text='Please select a participant.', font=self.font)
+        self.text = tk.Label(window, text='LOADING...', font=self.font)
         self.text.pack(fill=tk.BOTH, padx=10, pady=55, side=tk.BOTTOM)
 
         self.participant_label = tk.Label(self.text_frame, text=' ', font=self.font)
@@ -108,13 +117,12 @@ class VideoApp:
         self.btn_start["state"] = "disabled"
         self.btn_stop["state"] = "disabled"
         self.btn_light["state"] = "disabled"
-
-        self.turn_off_light()
+        self.btn_select_participant["state"] = "disabled"
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, padx=70)
         self.running = False
 
-        self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after the pain moment) * 15 (at 15 frames per second) + 100 frames
+        self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after pain) * 15 (at 15 fps) + 100 frames
         self.threshold = 0.3
 
         self.pain_scores = deque(maxlen=self.MAX_FRAMES)
@@ -123,21 +131,21 @@ class VideoApp:
         self.indices = deque(maxlen=self.MAX_FRAMES)
         self.times = deque(maxlen=self.MAX_FRAMES)
 
+        self.start_time = None
+        self.end_time = None
         self.start_index = 0
         self.end_index = 0
         self.index = 0
-        self.time = 0
         self.after_pain_count = 0
         self.pain_moment = False
 
         self.lock = threading.Lock()
+        self.img = None
 
         self.video_thread = threading.Thread(target=self.update_frame, daemon=True)
         self.video_thread.start()
         
     def connect_to_network(self, network_name):
-        #if network_name == self.ltch_wifi:
-        #    login_to_wifi()
         command = f'netsh wlan connect name={network_name} ssid={network_name}'
         subprocess.run(command, shell=True)
         return self.get_ssid(network_name)
@@ -145,11 +153,10 @@ class VideoApp:
     def get_ssid(self, network_name):
         data_strings = []
         while 'Profile' not in data_strings:
-            raw_wifi = subprocess.check_output(['netsh', 'WLAN', 'show', 'network'])
             raw_wifi = subprocess.check_output(['netsh', 'WLAN', 'show', 'interfaces'])
             data_strings = raw_wifi.decode('utf-8').split()
         index = data_strings.index('SSID')
-        return data_strings[index + 2] == network_name
+        return data_strings[index + 2] == network_name.strip('"').strip("'").split()[0]
 
     def start_video(self):
         self.running = True
@@ -158,8 +165,11 @@ class VideoApp:
         self.model_thread.start()
         self.btn_stop["state"] = "normal"
         self.btn_start["state"] = "disabled"
+        self.btn_select_participant["state"] = "disabled"
         self.start_time = datetime.datetime.now()
-        self.log_entry(str(self.participant_number) + ',' + self.start_time.strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3])
+        self.log_entry('\n' + str(self.participant_number) + ',' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3], 'summary_log.txt')
+        self.log_entry('----------\nParticipant ' + str(self.participant_number) + '\n', 'full_log.txt')
+        self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
 
     def turn_on_light(self):
         while True:
@@ -176,6 +186,9 @@ class VideoApp:
                 continue
 
     def turn_off_light(self):
+        time = datetime.datetime.now()
+        if self.btn_light["state"] != "disabled":
+            self.log_entry('Checked resident: ' + time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
         self.btn_light["state"] = "disabled"
         self.light_off_thread = threading.Thread(target=self.light_off, daemon=True)
         self.light_off_thread.start()
@@ -194,12 +207,11 @@ class VideoApp:
             except:
                 continue
 
-    def send_email(self):
+    def send_email(self, first=False):
         while True:
-            if not login_to_wifi():
+            if self.connect_to_network(self.ltch_wifi):
                 break
-            #if self.connect_to_network(self.ltch_wifi):
-            #    break
+            
         while True:
             try:
                 # creates SMTP session
@@ -209,16 +221,19 @@ class VideoApp:
                 s.starttls()
 
                 # authentication
-                s.login("uofr.healthpsychologylab@gmail.com", "zdxb nsxv fkir mljf")
+                s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 # create email message
-                for e in self.emails:
+                for email in self.to_emails:
                     msg = EmailMessage()
                     msg['Subject'] = 'Vision System Alert: Participant ' + str(self.participant_number)
-                    msg['From'] = 'uofr.healthpsychologylab@gmail.com'
-                    msg['To'] = e
-                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                    ' as a suspected pain expression has been detected.')
+                    msg['From'] = self.from_email
+                    msg['To'] = email
+                    if first:
+                        msg.set_content('Session started for Participant ' + str(self.participant_number) + '.')
+                    else:
+                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                        ' as a suspected pain expression has been detected.')
 
                     # sending the mail
                     s.send_message(msg)
@@ -229,56 +244,65 @@ class VideoApp:
             except:
                 continue
 
-    def log_entry(self, entry, end=''):
-        f = open("system_log.txt", "a")
-        f.write(entry + end)
+    def log_entry(self, entry, filename):
+        f = open(os.path.join(self.ssd_location, filename), "a")
+        f.write(entry)
         f.close()
 
     def run_model(self):
         while self.running:
             with (self.lock):
-                self.indices.append(self.index)
-                try:
-                    pain_score = self.pain_detector.predict_pain(self.frame)
-                except:
-                    pain_score = np.nan
-                self.pain_scores.append(pain_score)
+                if len(self.indices) == 0 or (len(self.indices) > 0 and self.index != self.indices[-1]): 
+                    k = self.index
+                    self.indices.append(k)
+                    try:
+                        pain_score = self.pain_detector.predict_pain(self.frame)
+                    except:
+                        pain_score = np.nan
+                    self.pain_scores.append(pain_score)
 
-                if not self.pain_moment and pain_score > self.threshold:
-                    self.pain_moment = True
-                    self.start_index = self.index
-                    self.btn_light["state"] = "normal"
-                    self.btn_stop["state"] = "disabled"
-                    self.text.config(text='Session ongoing: suspected pain expression.')
-                    self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
-                    self.light_thread.start()
+                    if not self.pain_moment and pain_score > self.threshold:
+                        self.pain_moment = True
+                        self.start_index = k
+                        self.btn_light["state"] = "normal"
+                        self.btn_stop["state"] = "disabled"
+                        self.text.config(text='Session ongoing: suspected pain expression.')
+                        time = datetime.datetime.now()
+                        self.log_entry('Suspected pain: ' + time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
+                        self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
+                        self.light_thread.start()
 
-                if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.indices[-1] - self.indices[0] < self.MAX_FRAMES):
-                    self.end_index = self.index
+                    if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
+                        self.end_index = k
 
-                elif self.pain_moment and self.end_index - self.start_index >= self.MAX_FRAMES/2 and self.indices[-1] - self.indices[0] >= self.MAX_FRAMES:
-                    for c in self.count:
-                        try:
-                            i = self.indices.index(c)
-                            i_ = self.count.index(c)
-                        except ValueError:
-                            continue
-                        break
-                    j = self.indices.index(self.end_index)+1
-                    j_ = self.count.index(self.end_index)+1
-                    self.save_video(deque(itertools.islice(self.frames, i_, j_)), deque(itertools.islice(self.pain_scores, i, j)), deque(itertools.islice(self.indices, i, j)), deque(itertools.islice(self.times, i, j)))
-                    self.after_pain_count = 0
-                    self.pain_moment = False
+                    elif self.pain_moment and self.end_index - self.start_index >= self.MAX_FRAMES/2 and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
+                        for c in self.count:
+                            try:
+                                i = self.indices.index(c)
+                                i_ = self.count.index(c)
+                            except ValueError:
+                                continue
+                            break
+                        j = self.indices.index(self.end_index)+1
+                        j_ = self.count.index(self.end_index)+1
+                        self.save_video(deque(itertools.islice(self.frames, i_, j_)), deque(itertools.islice(self.pain_scores, i, j)), deque(itertools.islice(self.indices, i, j)), deque(itertools.islice(self.times, i, j)))
+                        self.after_pain_count = 0
+                        self.pain_moment = False
 
     def stop_video(self):
         self.running = False
         self.btn_start["state"] = "normal"
         self.btn_stop["state"] = "disabled"
+        self.btn_select_participant["state"] = "normal"
         self.text.config(text='Please start the session when ready.')
         self.end_time = datetime.datetime.now()
         self.index = 0
         difference = (self.end_time - self.start_time).total_seconds()/60.0
-        self.log_entry(',' + self.end_time.strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3] + ',' + str(round(difference, 3)), '\n')
+        self.log_entry(',' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + ',' + str(round(difference, 3)), 'summary_log.txt')
+        self.log_entry('Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
+        self.log_entry('The total duration of this session was ' + str(round(difference, 3)) + ' minutes.\n----------\n', 'full_log.txt')
+        self.start_time = None
+        self.end_time = None
 
     def save_video(self, frames, pain_scores, indices, times):
         height, width, layers = frames[0].shape
@@ -302,13 +326,16 @@ class VideoApp:
         self.text.config(text='Session ongoing.')
 
         with open(os.path.join(self.participant,
-                               'pain_scores_' + str(len(glob.glob1(self.participant, "*.csv")) + 1) + '.csv'),
-                  'w') as f:
+                               'pain_scores_' + str(len(glob.glob1(self.participant, "*.csv")) + 1) + '.csv'), 'w') as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(['time', 'index', 'frame', 'pain_score'])
             writer.writerows(zip(times, inds, frms, pain_scores))
 
     def update_frame(self):
+        self.send_email(True)
+        self.turn_off_light()
+        self.btn_select_participant["state"] = "normal"
+        self.text.config(text='Please select a participant.')
         while True:
             self.frame = self.vid.read()
             self.frame = cv2.putText(self.frame, str(self.index),(20, 45), cv2.FONT_HERSHEY_SIMPLEX,
@@ -319,24 +346,26 @@ class VideoApp:
                 self.times.append(datetime.datetime.now().strftime("%Y-%m-%d+%H:%M:%S.%f")[:-3])
                 self.index += 1
             
-            self.frame = cv2.resize(self.frame, (int(0.41*self.width), int(0.41*self.height)))
+            frame = cv2.resize(self.frame, (int(0.41*self.width), int(0.41*self.height)))
             if self.btn_light["state"] == "normal":
-                self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0,0,255))
+                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0,0,255))
             else:
-                self.frame = cv2.copyMakeBorder(self.frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240,240,240))
+                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240,240,240))
 
-            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)))
-            self.canvas.create_image(10, 10, image=self.photo, anchor=tk.NW)
+            photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+
+            self.canvas.configure(image=photo)
+            self.canvas.image = photo
             self.window.update()
 
-    def select_participant(self):
+    def select_participant(self): 
         self.reference_images = []
         self.pain_detector.ref_frames = []
         self.participant_label.config(text='')
         for widget in self.photo_frame.winfo_children():
             if isinstance(widget, tk.Label):
                 widget.destroy()
-        self.participant = filedialog.askdirectory(initialdir='F:\Lumsden')
+        self.participant = filedialog.askdirectory(initialdir=self.ssd_location)
         for (root_, dirs, files) in os.walk(self.participant):
             if files:
                 for file in files:
@@ -366,7 +395,6 @@ class VideoApp:
             frame = self.vid.read()
             path = os.path.join(self.participant,
                                 'reference_image_' + str(len(glob.glob1(self.participant, "*.jpg")) + 1) + '.jpg')
-            #while len(self.pain_detector.ref_frames) < 3:
             try:
                 before = len(self.pain_detector.ref_frames)
                 self.pain_detector.add_references([np.asarray(frame)])
@@ -390,31 +418,59 @@ class VideoApp:
             self.window.update()
 
     def __del__(self):
-        #if self.vid.isOpened():
         self.video_thread.join()
         self.model_thread.join()
         self.email_thread.join()
         self.light_thread.join()
         self.vid.release()
-
+    
+    def on_closing(self):
+        if self.start_time is not None:
+            self.stop_video()
+        self.window.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.state("zoomed")
     root.resizable(width=True, height=True)
-    model = r"C:\Users\Thomas\Desktop\pain_system\model_epoch4.pt"
-    ssd = ""
+    model = r"C:\Users\Dr Thomas\Desktop\pain_system\model_epoch4.pt"
 
     # modify the following as needed
-    location = 'Test'
-    threshold = 0.3
-    ltch_wifi = '"RQHR Guest"'
-    wemo_wifi = 'WeMo.Switch.FFB'
-    emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca'] 
+    threshold = 0.2422
+    # 0.2422 was chosen based on the optimal threshold based on the ROC AUC curve for FACS pain score of 4
+    # we can also use the median values in the table below to make thresholds for each FACS pain score
+    ssd = 'G:\CentralHavenSaskatoon'
+    ltch_wifi = "PainStudy"
+    wemo_wifi = 'WeMo.Switch.12E'
+    from_email = 'uofr.healthpsychologylab@gmail.com'
+    to_emails = ['abhi.saim@gmail.com', 'abhishek.moturu@mail.utoronto.ca'] 
     # Lumsden: heritagehome@rqhealth.ca
-    # Saskatoon: ch.nurses@saskhealthauthority.ca
+    # CentralHavenSaskatoon: ch.nurses@saskhealthauthority.ca
 
-    login_to_wifi()
-
-    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, emails)
+    location = ssd.split('\\')[-1]
+    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, from_email, to_emails)
+    root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
+
+# the following table gives the average thresholds for the corresponding FACS pain scores in the Regina Heat Dataset
+'''
+    Label    median      mean       std   count
+0     0.0  0.218241  0.511624  0.684555  192171
+1     1.0  0.188460  0.431917  0.525569   19133
+2     2.0  0.295027  0.546301  0.588908    4960
+3     3.0  0.508348  0.682241  0.574774    2210
+4     4.0  0.526920  0.716655  0.550234    1754
+5     5.0  0.520900  0.721224  0.580451     922
+6     6.0  0.658955  0.802768  0.624160     522
+7     7.0  0.747635  0.942009  0.661130     391
+8     8.0  0.694499  0.928988  0.641226     422
+9     9.0  0.764518  0.871981  0.509774     244
+10   10.0  0.788160  0.933165  0.583640     318
+11   11.0  1.599810  1.675409  0.708176      68
+12   12.0  1.982628  2.016632  0.477232      48
+13   13.0  1.658038  1.910605  0.840470      19
+14   14.0  2.505320  2.470200  0.356324      59
+15   15.0  1.705458  1.747546  0.364064      21
+16   16.0  1.405468  1.403963  0.114371      20
+'''
+
