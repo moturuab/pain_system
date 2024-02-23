@@ -139,7 +139,7 @@ class VideoApp:
         self.running = False
 
         self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after pain) * 15 (at 15 fps) + 100 frames
-        self.threshold = 0.3
+        #self.threshold = 0.3
 
         self.pain_scores = deque(maxlen=self.MAX_FRAMES)
         self.frames = deque(maxlen=self.MAX_FRAMES)
@@ -245,7 +245,7 @@ class VideoApp:
                 for email in self.to_emails:
                     if email == self.from_email:
                         msg = EmailMessage()
-                        msg['Subject'] = 'Vision System Alert: Location ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
+                        msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
                         msg['To'] = email
                         msg.set_content('Please check on Participant ' + str(self.participant_number) +
@@ -347,6 +347,10 @@ class VideoApp:
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
                         and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]), self.high_frames))):
                         print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))])
+                        print([p for p in
+                               itertools.islice(self.pain_scores, len(self.pain_scores) - self.seconds * 3,
+                                                len(self.pain_scores)) if p > self.threshold and p is not np.nan])
+                        print(self.threshold)
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
