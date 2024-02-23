@@ -329,8 +329,8 @@ class VideoApp:
                     k = self.index
                     self.indices.append(k)
                     try:
-                        angle = self.check_face_angle(self.frame)
-                        print(angle)
+                        angle = 0 #self.check_face_angle(self.frame)
+                        #print(angle)
                         if -30 <= angle <= 30:
                             pain_score = self.pain_detector.predict_pain(self.frame)
                         else:
