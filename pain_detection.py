@@ -343,7 +343,12 @@ class VideoApp:
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
                         and len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]) >= self.high_frames:
-
+                        print(len(self.pain_scores))
+                        print(self.seconds * 3)
+                        print(len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]))
+                        print(itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores)))
+                        print(self.high_frames)
+                        print()
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
