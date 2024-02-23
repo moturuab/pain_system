@@ -346,7 +346,7 @@ class VideoApp:
                         print(len(self.pain_scores))
                         print(self.seconds * 3)
                         print(len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]))
-                        print(itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores)))
+                        print(list(itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))))
                         print(self.high_frames)
                         print()
                         self.pain_moment = True
