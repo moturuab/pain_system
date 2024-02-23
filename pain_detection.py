@@ -20,6 +20,7 @@ from matplotlib.figure import Figure
 from collections import deque
 import itertools
 import faulthandler
+import mediapipe as mp
 import smtplib
 import argparse
 import subprocess
@@ -41,10 +42,12 @@ parser.add_argument('-from_email', type=str, default='uofr.healthpsychologylab@g
 parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gmail.com')
 parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
+parser.add_argument('-seconds', type=int, default=3)
+parser.add_argument('-high_frames', type=int, default=5)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -52,6 +55,8 @@ class VideoApp:
         self.model_location = model_location
         self.location = location
         self.threshold = threshold
+        self.seconds = seconds
+        self.high_frames = high_frames
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
         self.from_email = from_email
@@ -147,6 +152,9 @@ class VideoApp:
         self.index = 0
         self.after_pain_count = 0
         self.pain_moment = False
+
+        self.mp_face_mesh = mp.solutions.face_mesh
+        self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
         self.lock = threading.Lock()
         self.img = None
@@ -252,6 +260,68 @@ class VideoApp:
         f.write(entry)
         f.close()
 
+    def check_face_angle(self, image):
+
+        # To improve performance
+        image.flags.writeable = False
+
+        # Get the result
+        results = self.face_mesh.process(image)
+
+        # To improve performance
+        image.flags.writeable = True
+
+        # Convert the color space from RGB to BGR
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+        img_h, img_w, img_c = image.shape
+        face_3d = []
+        face_2d = []
+
+        y = 360
+
+        if results.multi_face_landmarks:
+            for face_landmarks in results.multi_face_landmarks:
+                for idx, lm in enumerate(face_landmarks.landmark):
+                    if idx == 33 or idx == 263 or idx == 1 or idx == 61 or idx == 291 or idx == 199:
+
+                        x, y = int(lm.x * img_w), int(lm.y * img_h)
+
+                        # Get the 2D Coordinates
+                        face_2d.append([x, y])
+
+                        # Get the 3D Coordinates
+                        face_3d.append([x, y, lm.z])
+
+                        # Convert it to the NumPy array
+                face_2d = np.array(face_2d, dtype=np.float64)
+
+                # Convert it to the NumPy array
+                face_3d = np.array(face_3d, dtype=np.float64)
+
+                # The camera matrix
+                focal_length = 1 * img_w
+
+                cam_matrix = np.array([[focal_length, 0, img_h / 2],
+                                       [0, focal_length, img_w / 2],
+                                       [0, 0, 1]])
+
+                # The Distance Matrix
+                dist_matrix = np.zeros((4, 1), dtype=np.float64)
+
+                # Solve PnP
+                success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
+
+                # Get rotational matrix
+                rmat, jac = cv2.Rodrigues(rot_vec)
+
+                # Get angles
+                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+
+                # Get the y rotation degree
+                y = angles[1] * 360
+        return y
+
     def run_model(self):
         while self.running:
             with (self.lock):
@@ -259,12 +329,17 @@ class VideoApp:
                     k = self.index
                     self.indices.append(k)
                     try:
-                        pain_score = self.pain_detector.predict_pain(self.frame)
+                        if -30 <= self.check_face_angle(self.frame) <= 30:
+                            pain_score = self.pain_detector.predict_pain(self.frame)
+                        else:
+                            pain_score = np.nan
                     except:
                         pain_score = np.nan
                     self.pain_scores.append(pain_score)
 
-                    if not self.pain_moment and pain_score > self.threshold:
+                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
+                        and len(p > self.threshold for p in self.pain_scores[-self.seconds * 3:]) >= self.high_frames:
+
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
@@ -437,6 +512,8 @@ if __name__ == "__main__":
     root.resizable(width=True, height=True)
     model = "model_epoch4.pt"
     threshold = arg_dict.threshold
+    seconds = arg_dict.seconds
+    high_frames = arg_dict.high_frames
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
 
@@ -450,7 +527,7 @@ if __name__ == "__main__":
     # CentralHavenSaskatoon: ch.nurses@saskhealthauthority.ca
 
     location = ssd.split('\\')[-1]
-    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
