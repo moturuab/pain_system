@@ -342,7 +342,7 @@ class VideoApp:
                     self.pain_scores.append(pain_score)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
-                        and len(p > self.threshold for p in self.pain_scores[-self.seconds * 3:]) >= self.high_frames:
+                        and len([p > self.threshold for p in self.pain_scores[-self.seconds * 3:]]) >= self.high_frames:
 
                         self.pain_moment = True
                         self.start_index = k
