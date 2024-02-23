@@ -154,7 +154,7 @@ class VideoApp:
         self.pain_moment = False
 
         self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.9, min_tracking_confidence=0.9)
 
         self.lock = threading.Lock()
         self.img = None
@@ -331,14 +331,14 @@ class VideoApp:
                     try:
                         angle = self.check_face_angle(self.frame)
                         print(angle)
-                        print(self.pain_detector.predict_pain(self.frame))
-                        print()
                         if -30 <= angle <= 30:
                             pain_score = self.pain_detector.predict_pain(self.frame)
                         else:
                             pain_score = np.nan
                     except:
                         pain_score = np.nan
+                    print(pain_score)
+                    print()
                     self.pain_scores.append(pain_score)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
