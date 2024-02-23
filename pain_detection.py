@@ -332,8 +332,8 @@ class VideoApp:
                     k = self.index
                     self.indices.append(k)
                     try:
-                        angle = 0 #self.check_face_angle(self.frame)
-                        #print(angle)
+                        angle = self.check_face_angle(self.frame)
+                        print(angle)
                         if -30 <= angle <= 30:
                             pain_score = self.pain_detector.predict_pain(self.frame)
                         else:
@@ -344,13 +344,9 @@ class VideoApp:
                     print()
                     self.pain_scores.append(pain_score)
 
-                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
-                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]), self.high_frames))):
-                        print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))])
-                        print([p for p in
-                               itertools.islice(self.pain_scores, len(self.pain_scores) - self.seconds * 3,
-                                                len(self.pain_scores)) if p > self.threshold and p is not np.nan])
-                        print(self.threshold)
+                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
+                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), self.high_frames))):
+
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
