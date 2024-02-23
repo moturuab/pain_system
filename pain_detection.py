@@ -43,12 +43,12 @@ parser.add_argument('-from_email', type=str, default='uofr.healthpsychologylab@g
 parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gmail.com')
 parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
-parser.add_argument('-seconds', type=int, default=3)
-parser.add_argument('-high_frames', type=int, default=5)
+parser.add_argument('-seconds', type=int, default=5)
+parser.add_argument('-percent', type=float, default=0.15)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -58,7 +58,7 @@ class VideoApp:
         self.location_number = location_number
         self.threshold = threshold
         self.seconds = seconds
-        self.high_frames = high_frames
+        self.percent = percent
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
         self.from_email = from_email
@@ -187,7 +187,7 @@ class VideoApp:
         self.btn_select_participant["state"] = "disabled"
         self.start_time = datetime.datetime.now()
         self.log_entry('\n' + str(self.participant_number) + ',' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3], 'summary_log.txt')
-        self.log_entry('----------\nParticipant ' + str(self.participant_number) + ' (threshold: ' + str(arg_dict.threshold) + ')\n', 'full_log.txt')
+        self.log_entry('----------\nParticipant ' + str(self.participant_number) + ' (threshold: ' + str(self.threshold) + ')\n', 'full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
 
     def turn_on_light(self):
@@ -263,68 +263,6 @@ class VideoApp:
         f.write(entry)
         f.close()
 
-    def check_face_angle(self, image):
-
-        # To improve performance
-        image.flags.writeable = False
-
-        # Get the result
-        results = self.face_mesh.process(image)
-
-        # To improve performance
-        image.flags.writeable = True
-
-        # Convert the color space from RGB to BGR
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-        img_h, img_w, img_c = image.shape
-        face_3d = []
-        face_2d = []
-
-        y = 360
-
-        if results.multi_face_landmarks:
-            for face_landmarks in results.multi_face_landmarks:
-                for idx, lm in enumerate(face_landmarks.landmark):
-                    if idx == 33 or idx == 263 or idx == 1 or idx == 61 or idx == 291 or idx == 199:
-
-                        x, y = int(lm.x * img_w), int(lm.y * img_h)
-
-                        # Get the 2D Coordinates
-                        face_2d.append([x, y])
-
-                        # Get the 3D Coordinates
-                        face_3d.append([x, y, lm.z])
-
-                        # Convert it to the NumPy array
-                face_2d = np.array(face_2d, dtype=np.float64)
-
-                # Convert it to the NumPy array
-                face_3d = np.array(face_3d, dtype=np.float64)
-
-                # The camera matrix
-                focal_length = 1 * img_w
-
-                cam_matrix = np.array([[focal_length, 0, img_h / 2],
-                                       [0, focal_length, img_w / 2],
-                                       [0, 0, 1]])
-
-                # The Distance Matrix
-                dist_matrix = np.zeros((4, 1), dtype=np.float64)
-
-                # Solve PnP
-                success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix)
-
-                # Get rotational matrix
-                rmat, jac = cv2.Rodrigues(rot_vec)
-
-                # Get angles
-                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
-
-                # Get the y rotation degree
-                y = angles[1] * 360
-        return y
-
     def run_model(self):
         while self.running:
             with (self.lock):
@@ -332,20 +270,13 @@ class VideoApp:
                     k = self.index
                     self.indices.append(k)
                     try:
-                        angle = self.check_face_angle(self.frame)
-                        print(angle)
-                        if -30 <= angle <= 30:
-                            pain_score = self.pain_detector.predict_pain(self.frame)
-                        else:
-                            pain_score = np.nan
+                        pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                    print(pain_score)
-                    print()
                     self.pain_scores.append(pain_score)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
-                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), self.high_frames))):
+                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(len(self.pain_scores) * self.percent)))):
 
                         self.pain_moment = True
                         self.start_index = k
@@ -432,9 +363,9 @@ class VideoApp:
             
             frame = cv2.resize(self.frame, (int(0.41*self.width), int(0.41*self.height)))
             if self.btn_light["state"] == "normal":
-                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0,0,255))
+                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(0, 0, 255))
             else:
-                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240,240,240))
+                frame = cv2.copyMakeBorder(frame, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=(240, 240, 240))
 
             photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
 
@@ -520,7 +451,7 @@ if __name__ == "__main__":
     model = "model_epoch4.pt"
     threshold = arg_dict.threshold
     seconds = arg_dict.seconds
-    high_frames = arg_dict.high_frames
+    percent = arg_dict.percent
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
 
@@ -538,7 +469,7 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
-    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
