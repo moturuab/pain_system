@@ -19,6 +19,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from collections import deque
 import itertools
+from itertools import repeat
 import faulthandler
 import mediapipe as mp
 import smtplib
@@ -342,16 +343,8 @@ class VideoApp:
                     self.pain_scores.append(pain_score)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
-                        and len([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]) >= self.high_frames:
-                        print(len(self.pain_scores))
-                        print(self.seconds * 3)
-                        print([p > self.threshold for p in
-                                   itertools.islice(self.pain_scores, len(self.pain_scores) - self.seconds * 3,
-                                                    len(self.pain_scores))])
-                        print(len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]))
-                        print(list(itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))))
-                        print(self.high_frames)
-                        print()
+                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]), self.high_frames))):
+                        
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
