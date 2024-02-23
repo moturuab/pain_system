@@ -48,13 +48,14 @@ parser.add_argument('-high_frames', type=int, default=5)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
         self.ssd_location = ssd_location
         self.model_location = model_location
         self.location = location
+        self.location_number = location_number
         self.threshold = threshold
         self.seconds = seconds
         self.high_frames = high_frames
@@ -242,13 +243,14 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    msg = EmailMessage()
-                    msg['Subject'] = 'Vision System Alert: Participant ' + str(self.participant_number)
-                    msg['From'] = self.from_email
-                    msg['To'] = email
-                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                    ' as a suspected pain expression has been detected.')
-                    s.send_message(msg)
+                    if email == self.from_email:
+                        msg = EmailMessage()
+                        msg['Subject'] = 'Vision System Alert: Location ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
+                        msg['From'] = self.from_email
+                        msg['To'] = email
+                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                        ' as a suspected pain expression has been detected.')
+                        s.send_message(msg)
 
                 # terminating the session
                 s.quit()
@@ -344,7 +346,7 @@ class VideoApp:
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
                         and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]), self.high_frames))):
-                        
+                        print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))])
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
@@ -532,7 +534,11 @@ if __name__ == "__main__":
     # CentralHavenSaskatoon: ch.nurses@saskhealthauthority.ca
 
     location = ssd.split('\\')[-1]
-    app = VideoApp(root, location + " Vision System", ssd, model, location, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails)
+    if location == 'Lumsden':
+        location_number = '1'
+    elif location == 'CentralHavenSaskatoon':
+        location_number = '2'
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, high_frames, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
