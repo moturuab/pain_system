@@ -342,9 +342,12 @@ class VideoApp:
                     self.pain_scores.append(pain_score)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 3 \
-                        and len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]) >= self.high_frames:
+                        and len([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]) >= self.high_frames:
                         print(len(self.pain_scores))
                         print(self.seconds * 3)
+                        print([p > self.threshold for p in
+                                   itertools.islice(self.pain_scores, len(self.pain_scores) - self.seconds * 3,
+                                                    len(self.pain_scores))])
                         print(len([p > self.threshold for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))]))
                         print(list(itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 3, len(self.pain_scores))))
                         print(self.high_frames)
