@@ -276,9 +276,9 @@ class VideoApp:
 
                     if len(self.pain_scores) >= self.seconds * 15:
                         print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
-                        print(int(len(self.pain_scores) * self.percent))
+                        print(15 * self.seconds * self.percent)
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
-                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(len(self.pain_scores) * self.percent)))):
+                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
                         self.start_index = k
                         self.btn_light["state"] = "normal"
