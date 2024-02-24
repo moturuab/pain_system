@@ -139,7 +139,6 @@ class VideoApp:
         self.running = False
 
         self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after pain) * 15 (at 15 fps) + 100 frames
-        #self.threshold = 0.3
 
         self.pain_scores = deque(maxlen=self.MAX_FRAMES)
         self.frames = deque(maxlen=self.MAX_FRAMES)
