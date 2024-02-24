@@ -44,7 +44,7 @@ parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gma
 parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-seconds', type=int, default=5)
-parser.add_argument('-percent', type=float, default=0.25)
+parser.add_argument('-percent', type=float, default=0.2)
 arg_dict = parser.parse_args()
 
 class VideoApp:
