@@ -44,7 +44,7 @@ parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gma
 parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-seconds', type=int, default=5)
-parser.add_argument('-percent', type=float, default=0.15)
+parser.add_argument('-percent', type=float, default=0.25)
 arg_dict = parser.parse_args()
 
 class VideoApp:
@@ -274,9 +274,9 @@ class VideoApp:
                         pain_score = np.nan
                     self.pain_scores.append(pain_score)
 
-                    if len(self.pain_scores) >= self.seconds * 15:
-                        print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
-                        print(15 * self.seconds * self.percent)
+                    #if len(self.pain_scores) >= self.seconds * 15:
+                    #    print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
+                    #    print(15 * self.seconds * self.percent)
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
