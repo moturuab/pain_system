@@ -274,8 +274,9 @@ class VideoApp:
                         pain_score = np.nan
                     self.pain_scores.append(pain_score)
 
-                    print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
-                    print(int(len(self.pain_scores) * self.percent))
+                    if len(self.pain_scores) >= self.seconds * 15:
+                        print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
+                        print(int(len(self.pain_scores) * self.percent))
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(len(self.pain_scores) * self.percent)))):
                         self.pain_moment = True
