@@ -246,14 +246,14 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    if email == self.from_email:
-                        msg = EmailMessage()
-                        msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
-                        msg['From'] = self.from_email
-                        msg['To'] = email
-                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                        ' as a suspected pain expression has been detected.')
-                        s.send_message(msg)
+                    #if email == self.from_email:
+                    msg = EmailMessage()
+                    msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
+                    msg['From'] = self.from_email
+                    msg['To'] = email
+                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                    ' as a suspected pain expression has been detected.')
+                    s.send_message(msg)
 
                 # terminating the session
                 s.quit()
