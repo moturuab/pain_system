@@ -45,8 +45,8 @@ parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
-parser.add_argument('-dynamic_seconds', type=int, default=3)
-parser.add_argument('-dynamic_threshold', type=float, default=0.2)
+parser.add_argument('-dynamic_seconds', type=int, default=2)
+parser.add_argument('-dynamic_threshold', type=float, default=0.1)
 arg_dict = parser.parse_args()
 
 class VideoApp:
