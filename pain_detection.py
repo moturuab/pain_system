@@ -470,7 +470,7 @@ if __name__ == "__main__":
     # 0.2422 was chosen based on the optimal threshold based on the ROC AUC curve for FACS pain score of 4
     # we can also use the median values in the table below to make thresholds for each FACS pain score
     ssd = arg_dict.ssd
-    ltch_wifi = "RQHR Guest" #"PainStudy"
+    ltch_wifi = "PainStudy"
     wemo_wifi = 'WeMo.Switch.' + arg_dict.wemo_code
     # Lumsden: heritagehome@rqhealth.ca
     # CentralHavenSaskatoon: ch.nurses@saskhealthauthority.ca
