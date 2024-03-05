@@ -277,7 +277,6 @@ class VideoApp:
                     except:
                         pain_score = np.nan
                     if len(self.indices) % (self.dynamic_seconds * 15) == 0 and pain_score < self.dynamic_threshold:
-                        print('new reference')
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.frame])
                     self.pain_scores.append(pain_score)
