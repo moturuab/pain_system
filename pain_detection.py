@@ -45,10 +45,12 @@ parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
+parser.add_argument('-dynamic_seconds', type=int, default=3)
+parser.add_argument('-dynamic_threshold', type=float, default=0.2)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -59,6 +61,8 @@ class VideoApp:
         self.threshold = threshold
         self.seconds = seconds
         self.percent = percent
+        self.dynamic_seconds = dynamic_seconds
+        self.dynamic_threshold = dynamic_threshold
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
         self.from_email = from_email
@@ -272,6 +276,10 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
+                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and pain_score < self.dynamic_threshold:
+                        print('new reference')
+                        self.pain_detector.ref_frames.pop(1)
+                        self.pain_detector.add_references([self.frame])
                     self.pain_scores.append(pain_score)
 
                     #if len(self.pain_scores) >= self.seconds * 15:
@@ -453,6 +461,8 @@ if __name__ == "__main__":
     threshold = arg_dict.threshold
     seconds = arg_dict.seconds
     percent = arg_dict.percent
+    dynamic_seconds = arg_dict.dynamic_seconds
+    dynamic_threshold = arg_dict.dynamic_threshold
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
 
@@ -470,7 +480,7 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
-    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
