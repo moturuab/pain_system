@@ -38,19 +38,20 @@ faulthandler.enable()
 # python pain_detection.py
 
 parser = argparse.ArgumentParser(prog='Vision System', description='This is a vision system for monitoring pain.')
-parser.add_argument('-threshold', type=float, default=0.2422)
 parser.add_argument('-from_email', type=str, default='uofr.healthpsychologylab@gmail.com')
 parser.add_argument('-to_email', type=str, default='uofr.healthpsychologylab@gmail.com')
 parser.add_argument('-wemo_code', type=str, default='12E')
 parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
+parser.add_argument('-threshold', type=float, default=0.2422)
 parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
 parser.add_argument('-dynamic_seconds', type=int, default=2)
 parser.add_argument('-dynamic_threshold', type=float, default=0.1)
+parser.add_argument('--no_email', action='store_true', default=False)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, no_email, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -63,6 +64,7 @@ class VideoApp:
         self.percent = percent
         self.dynamic_seconds = dynamic_seconds
         self.dynamic_threshold = dynamic_threshold
+        self.no_email = no_email
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
         self.from_email = from_email
@@ -246,14 +248,15 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    #if email == self.from_email:
-                    msg = EmailMessage()
-                    msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
-                    msg['From'] = self.from_email
-                    msg['To'] = email
-                    msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                    ' as a suspected pain expression has been detected.')
-                    s.send_message(msg)
+                    if email == self.from_email or (not self.no_email and email != self.from_email):
+                        print(email)
+                        msg = EmailMessage()
+                        msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
+                        msg['From'] = self.from_email
+                        msg['To'] = email
+                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                        ' as a suspected pain expression has been detected.')
+                        s.send_message(msg)
 
                 # terminating the session
                 s.quit()
@@ -462,6 +465,7 @@ if __name__ == "__main__":
     percent = arg_dict.percent
     dynamic_seconds = arg_dict.dynamic_seconds
     dynamic_threshold = arg_dict.dynamic_threshold
+    no_email = arg_dict.no_email
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
 
@@ -479,7 +483,7 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
-    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
