@@ -249,7 +249,6 @@ class VideoApp:
 
                 for email in self.to_emails:
                     if email == self.from_email or (not self.no_email and email != self.from_email):
-                        print(email)
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -283,10 +282,7 @@ class VideoApp:
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.frame])
                     self.pain_scores.append(pain_score)
-
-                    #if len(self.pain_scores) >= self.seconds * 15:
-                    #    print([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))])
-                    #    print(15 * self.seconds * self.percent)
+                    
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
