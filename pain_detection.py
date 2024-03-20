@@ -47,7 +47,7 @@ parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
 parser.add_argument('-deviation_seconds', type=int, default=20)
 parser.add_argument('-deviation_stddev', type=float, default=1)
-parser.add_argument('-dynamic_seconds', type=int, default=10)
+parser.add_argument('-dynamic_seconds', type=int, default=20)
 #parser.add_argument('-dynamic_seconds', type=int, default=2)
 #parser.add_argument('-dynamic_threshold', type=float, default=0.1)
 parser.add_argument('--no_email', action='store_true', default=False)
@@ -258,9 +258,11 @@ class VideoApp:
 
                 # authentication
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
-
+                print('hi1')
                 for email in self.to_emails:
-                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
+                    print('hi2')
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 1 and not self.email_sent:
+                        print(self.pain_count)
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -295,7 +297,7 @@ class VideoApp:
                     except:
                         pain_score = np.nan
 
-                    print(pain_score)
+                    #print(pain_score)
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
