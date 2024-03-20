@@ -295,32 +295,32 @@ class VideoApp:
                     except:
                         pain_score = np.nan
 
-                    print(len(self.pain_scores)-self.dynamic_seconds * 10)
+                    print(len(self.pain_scores)-self.dynamic_seconds * 10+1)
                     print(len(self.pain_scores))
 
                     if len(self.pain_scores) > self.dynamic_seconds * 10:
-                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10, len(self.pain_scores))))
-                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10, len(self.pain_scores))))
+                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10+1, len(self.pain_scores))))
+                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10+1, len(self.pain_scores))))
                     else:
                         mean = 0
                         stddev = 0
 
-                    if len(self.indices) % (self.dynamic_seconds * 10) == 0 and np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10, len(self.pain_scores)))) < mean - self.deviation_stddev * stddev:
+                    if len(self.indices) % (self.dynamic_seconds * 10) == 0 and np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10+1, len(self.pain_scores)))) < mean - self.deviation_stddev * stddev:
                         self.pain_detector.ref_frames.pop(1)
-                        self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10, len(self.pain_scores))))]])
+                        self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 10+1, len(self.pain_scores))))]])
                         self.dynamic_updates += 1
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
 
                     if len(self.pain_scores) > self.deviation_seconds * 10:
-                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 10, len(self.pain_scores))))
-                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 10, len(self.pain_scores))))
+                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 10+1, len(self.pain_scores))))
+                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 10+1, len(self.pain_scores))))
                     else:
                         mean = 0
                         stddev = 0
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 10 \
-                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 10, len(self.pain_scores))]), int(self.seconds * 10 * self.percent)))):
+                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 10+1, len(self.pain_scores))]), int(self.seconds * 10 * self.percent)))):
                         self.pain_moment = True
                         self.pain_count += 1
                         self.start_index = k
