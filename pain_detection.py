@@ -296,15 +296,15 @@ class VideoApp:
                         pain_score = np.nan
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
-                        mean = np.mean(self.pain_scores[-self.deviation_seconds * 15:])
-                        stddev = np.std(self.pain_scores[-self.deviation_seconds * 15:])
+                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15, len(self.pain_scores))))
+                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15, len(self.pain_scores))))
                     else:
                         mean = 0
                         stddev = 0
 
-                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and np.min(self.pain_scores[-self.dynamic_seconds * 15:]) < mean - self.deviation_stddev * stddev:
+                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15, len(self.pain_scores)))) < mean - self.deviation_stddev * stddev:
                         self.pain_detector.ref_frames.pop(1)
-                        self.pain_detector.add_references([self.pain_frames[np.argmin(self.pain_scores[-self.dynamic_seconds * 15:])]])
+                        self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15, len(self.pain_scores))))]])
                         self.dynamic_updates += 1
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
