@@ -45,9 +45,9 @@ parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-threshold', type=float, default=0.2422)
 parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
-parser.add_argument('-deviation_seconds', type=int, default=30)
+parser.add_argument('-deviation_seconds', type=int, default=10)
 parser.add_argument('-deviation_stddev', type=float, default=1.5)
-parser.add_argument('-dynamic_seconds', type=int, default=30)
+parser.add_argument('-dynamic_seconds', type=int, default=10)
 #parser.add_argument('-dynamic_seconds', type=int, default=2)
 #parser.add_argument('-dynamic_threshold', type=float, default=0.1)
 parser.add_argument('--no_email', action='store_true', default=False)
@@ -294,18 +294,21 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and len(self.indices) > 0:  # and pain_score < self.dynamic_threshold:
-                        self.pain_detector.ref_frames.pop(1)
-                        self.pain_detector.add_references([self.pain_frames[np.argmin(self.pain_scores[-self.dynamic_seconds * 15:])]])
-                        self.dynamic_updates += 1
-                    self.pain_scores.append(pain_score)
-                    self.pain_frames.append(self.frame)
+
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         mean = np.mean(self.pain_scores[-self.deviation_seconds * 15:])
                         stddev = np.std(self.pain_scores[-self.deviation_seconds * 15:])
                     else:
                         mean = 0
                         stddev = 0
+
+                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and np.min(self.pain_scores[-self.dynamic_seconds * 15:]) < mean - self.deviation_stddev * stddev:
+                        self.pain_detector.ref_frames.pop(1)
+                        self.pain_detector.add_references([self.pain_frames[np.argmin(self.pain_scores[-self.dynamic_seconds * 15:])]])
+                        self.dynamic_updates += 1
+                    self.pain_scores.append(pain_score)
+                    self.pain_frames.append(self.frame)
+
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
