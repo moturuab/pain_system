@@ -318,7 +318,7 @@ class VideoApp:
                         mean = 0
                         stddev = 0
 
-                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 10 \
+                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
                         self.pain_count += 1
