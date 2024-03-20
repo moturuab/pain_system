@@ -45,13 +45,16 @@ parser.add_argument('-ssd', type=str, default='G:\CentralHavenSaskatoon')
 parser.add_argument('-threshold', type=float, default=0.2422)
 parser.add_argument('-seconds', type=int, default=5)
 parser.add_argument('-percent', type=float, default=0.2)
-parser.add_argument('-dynamic_seconds', type=int, default=2)
-parser.add_argument('-dynamic_threshold', type=float, default=0.1)
+parser.add_argument('-deviation_seconds', type=int, default=30)
+parser.add_argument('-deviation_stddev', type=float, default=1.5)
+parser.add_argument('-dynamic_seconds', type=int, default=30)
+#parser.add_argument('-dynamic_seconds', type=int, default=2)
+#parser.add_argument('-dynamic_threshold', type=float, default=0.1)
 parser.add_argument('--no_email', action='store_true', default=False)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, no_email, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, no_email, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -62,8 +65,10 @@ class VideoApp:
         self.threshold = threshold
         self.seconds = seconds
         self.percent = percent
+        self.deviation_seconds = deviation_seconds
+        self.deviation_stddev = deviation_stddev
         self.dynamic_seconds = dynamic_seconds
-        self.dynamic_threshold = dynamic_threshold
+        #self.dynamic_threshold = dynamic_threshold
         self.no_email = no_email
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
@@ -147,6 +152,7 @@ class VideoApp:
         self.MAX_FRAMES = 700  # 20 (20 seconds) * 2 (before and after pain) * 15 (at 15 fps) + 100 frames
 
         self.pain_scores = deque(maxlen=self.MAX_FRAMES)
+        self.pain_frames = deque(maxlen=self.MAX_FRAMES)
         self.frames = deque(maxlen=self.MAX_FRAMES)
         self.count = deque(maxlen=self.MAX_FRAMES)
         self.indices = deque(maxlen=self.MAX_FRAMES)
@@ -157,6 +163,10 @@ class VideoApp:
         self.start_index = 0
         self.end_index = 0
         self.index = 0
+        self.pain_count = 0
+        self.check_count = 0
+        self.dynamic_updates = 0
+        self.email_sent = False
         self.after_pain_count = 0
         self.pain_moment = False
 
@@ -195,6 +205,7 @@ class VideoApp:
         self.log_entry('----------\nParticipant ' + str(self.participant_number) + ' (threshold: ' + str(self.threshold) + ')\n', 'full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
 
+
     def turn_on_light(self):
         while True:
             if self.connect_to_network(self.wemo_wifi):
@@ -213,6 +224,7 @@ class VideoApp:
         time = datetime.datetime.now()
         if self.btn_light["state"] != "disabled":
             self.log_entry('Checked resident: ' + time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
+            self.check_count += 1
         self.btn_light["state"] = "disabled"
         self.light_off_thread = threading.Thread(target=self.light_off, daemon=True)
         self.light_off_thread.start()
@@ -231,7 +243,7 @@ class VideoApp:
             except:
                 continue
 
-    def send_email(self, first=False):
+    def send_email(self, txt=None):
         while True:
             if self.connect_to_network(self.ltch_wifi):
                 break
@@ -248,15 +260,19 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    if email == self.from_email or (not self.no_email and email != self.from_email):
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
                         msg['To'] = email
-                        msg.set_content('Please check on Participant ' + str(self.participant_number) +
-                                        ' as a suspected pain expression has been detected.')
+                        if txt is not None:
+                            msg.set_content(txt)
+                        else:
+                            msg.set_content('Please check on Participant ' + str(self.participant_number) +
+                                            ' as a suspected pain expression has been detected 5 times in this session.')
                         s.send_message(msg)
 
+                self.email_sent = True
                 # terminating the session
                 s.quit()
                 break
@@ -278,14 +294,22 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and pain_score < self.dynamic_threshold:
+                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and len(self.indices) > 0:  # and pain_score < self.dynamic_threshold:
                         self.pain_detector.ref_frames.pop(1)
-                        self.pain_detector.add_references([self.frame])
+                        self.pain_detector.add_references([self.pain_frames[np.argmin(self.pain_scores[-self.dynamic_seconds * 15:])]])
+                        self.dynamic_updates += 1
                     self.pain_scores.append(pain_score)
-                    
+                    self.pain_frames.append(self.frame)
+                    if len(self.pain_scores) > self.deviation_seconds * 15:
+                        mean = np.mean(self.pain_scores[-self.deviation_seconds * 15:])
+                        stddev = np.std(self.pain_scores[-self.deviation_seconds * 15:])
+                    else:
+                        mean = 0
+                        stddev = 0
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
-                        and all(map(any, repeat(iter([p > self.threshold and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
+                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
+                        self.pain_count += 1
                         self.start_index = k
                         self.btn_light["state"] = "normal"
                         self.btn_stop["state"] = "disabled"
@@ -322,10 +346,42 @@ class VideoApp:
         self.index = 0
         difference = (self.end_time - self.start_time).total_seconds()/60.0
         self.log_entry(',' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + ',' + str(round(difference, 3)), 'summary_log.txt')
+        self.log_entry('Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n',
+                       'full_log.txt')
+        self.log_entry('Total number of times participant was checked: ' + str(self.check_count) + 'times.\n',
+                       'full_log.txt')
+        self.log_entry('Total dynamic reference image updates: ' + str(self.dynamic_updates) + '.\n',
+                       'full_log.txt')
         self.log_entry('Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
         self.log_entry('The total duration of this session was ' + str(round(difference, 3)) + ' minutes.\n----------\n', 'full_log.txt')
+
+        txt = 'Participant ' + str(self.participant_number) + '\n'
+        txt += 'Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
+        txt += 'Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
+        txt += 'Total duration: ' + str(round(difference, 3)) + ' minutes.\n'
+        txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n'
+        #txt += 'Total number of times participant was checked: ' + str(self.check_count) + 'times.\n'
+        self.send_email(txt)
+
         self.start_time = None
         self.end_time = None
+
+        self.pain_scores = deque(maxlen=self.MAX_FRAMES)
+        self.pain_frames = deque(maxlen=self.MAX_FRAMES)
+        self.frames = deque(maxlen=self.MAX_FRAMES)
+        self.count = deque(maxlen=self.MAX_FRAMES)
+        self.indices = deque(maxlen=self.MAX_FRAMES)
+        self.times = deque(maxlen=self.MAX_FRAMES)
+
+        self.start_index = 0
+        self.end_index = 0
+        self.index = 0
+        self.pain_count = 0
+        self.check_count = 0
+        self.email_sent = False
+        self.after_pain_count = 0
+        self.dynamic_updates = 0
+        self.pain_moment = False
 
     def save_video(self, frames, pain_scores, indices, times):
         height, width, layers = frames[0].shape
@@ -380,7 +436,7 @@ class VideoApp:
             self.canvas.image = photo
             self.window.update()
 
-    def select_participant(self): 
+    def select_participant(self):
         self.reference_images = []
         self.pain_detector.ref_frames = []
         self.participant_label.config(text='')
@@ -459,8 +515,10 @@ if __name__ == "__main__":
     threshold = arg_dict.threshold
     seconds = arg_dict.seconds
     percent = arg_dict.percent
+    deviation_seconds = arg_dict.deviation_seconds
+    deviation_stddev = arg_dict.deviation_stddev
     dynamic_seconds = arg_dict.dynamic_seconds
-    dynamic_threshold = arg_dict.dynamic_threshold
+    #dynamic_threshold = arg_dict.dynamic_threshold
     no_email = arg_dict.no_email
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
@@ -479,7 +537,7 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
-    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, dynamic_seconds, dynamic_threshold, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
