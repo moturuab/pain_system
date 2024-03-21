@@ -48,11 +48,12 @@ parser.add_argument('-percent', type=float, default=0.2)
 parser.add_argument('-deviation_seconds', type=int, default=20)
 parser.add_argument('-deviation_stddev', type=float, default=1)
 parser.add_argument('-dynamic_seconds', type=int, default=20)
+parser.add_argument('-dynamic_stddev', type=float, default=1)
 parser.add_argument('--no_email', action='store_true', default=False)
 arg_dict = parser.parse_args()
 
 class VideoApp:
-    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, no_email, ltch_wifi, wemo_wifi, from_email, to_emails):
+    def __init__(self, window, window_title, ssd_location, model_location, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, dynamic_stddev, no_email, ltch_wifi, wemo_wifi, from_email, to_emails):
         self.window = window
         self.window_title = window_title
         self.window.title(self.window_title)
@@ -66,7 +67,7 @@ class VideoApp:
         self.deviation_seconds = deviation_seconds
         self.deviation_stddev = deviation_stddev
         self.dynamic_seconds = dynamic_seconds
-        #self.dynamic_threshold = dynamic_threshold
+        self.dynamic_stddev = dynamic_stddev
         self.no_email = no_email
         self.ltch_wifi = ltch_wifi
         self.wemo_wifi = wemo_wifi
@@ -330,12 +331,12 @@ class VideoApp:
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
-                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
+                        std = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
                     else:
                         mean = 0
-                        stddev = 0
+                        std = 0
 
-                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) < mean - self.deviation_stddev * stddev:
+                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) < mean - self.dynamic_stddev * std:
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))]])
                         self.dynamic_updates += 1
@@ -344,13 +345,13 @@ class VideoApp:
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 15+1, len(self.pain_scores))))
-                        stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 15+1, len(self.pain_scores))))
+                        std = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 15+1, len(self.pain_scores))))
                     else:
                         mean = 0
-                        stddev = 0
+                        std = 0
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
-                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * stddev and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
+                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
                         self.pain_count += 1
                         self.start_index = k
@@ -564,7 +565,7 @@ if __name__ == "__main__":
     deviation_seconds = arg_dict.deviation_seconds
     deviation_stddev = arg_dict.deviation_stddev
     dynamic_seconds = arg_dict.dynamic_seconds
-    #dynamic_threshold = arg_dict.dynamic_threshold
+    dynamic_stddev = arg_dict.dynamic_stddev
     no_email = arg_dict.no_email
     from_email = arg_dict.from_email
     to_emails = [arg_dict.from_email, arg_dict.to_email]
@@ -583,7 +584,7 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
-    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
+    app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, dynamic_stddev, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
 
