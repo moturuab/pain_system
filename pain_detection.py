@@ -105,6 +105,7 @@ class VideoApp:
         img_label.pack(fill=tk.BOTH, side=tk.LEFT, padx=50, pady=50)
 
         font = fnt.Font(size=63)
+        self.txt = None
 
         self.blank = tk.Label(self.buttons_frame, text=" ", font=font)
         self.blank.pack(fill=tk.BOTH, padx=10, pady=10, side=tk.BOTTOM)
@@ -261,20 +262,21 @@ class VideoApp:
 
                 print('send email 1')
                 for email in self.to_emails:
-                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 2 and not self.email_sent:
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
                         print('send email 2')
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
                         msg['To'] = email
-                        if txt is not None:
-                            msg.set_content(txt)
-                        else:
+                        if self.txt is None:
                             msg.set_content('Please check on Participant ' + str(self.participant_number) +
                                             ' as a suspected pain expression has been detected 5 times in this session.')
+                        else:
+                            msg.set_content(self.txt)
+                            self.txt = None
                         s.send_message(msg)
 
-                if self.pain_count >= 2 and not self.email_sent:
+                if self.pain_count >= 5 and not self.email_sent:
                     self.email_sent = True
                 # terminating the session
                 s.quit()
@@ -297,7 +299,7 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                    print(pain_score)
+                        
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
                         stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
@@ -374,6 +376,10 @@ class VideoApp:
         txt += 'Total duration: ' + str(round(difference, 3)) + ' minutes.\n'
         txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n'
         #txt += 'Total number of times participant was checked: ' + str(self.check_count) + 'times.\n'
+        self.txt = txt
+        self.email_thread = threading.Thread(target=self.send_email, daemon=True)
+        self.email_thread.start()
+
         #self.send_email(txt)
 
         self.start_time = None
