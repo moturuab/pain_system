@@ -259,9 +259,10 @@ class VideoApp:
                 # authentication
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
+                print('send email 1')
                 for email in self.to_emails:
                     if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 2 and not self.email_sent:
-                        print('send email')
+                        print('send email 2')
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -295,7 +296,7 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                        
+
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
                         stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
