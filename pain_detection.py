@@ -274,7 +274,8 @@ class VideoApp:
                                             ' as a suspected pain expression has been detected 5 times in this session.')
                         s.send_message(msg)
 
-                self.email_sent = True
+                if self.pain_count >= 2 and not self.email_sent:
+                    self.email_sent = True
                 # terminating the session
                 s.quit()
                 break
