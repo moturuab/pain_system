@@ -294,7 +294,7 @@ class VideoApp:
                     try:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
-                        pain_score = np.nan
+                        pain_score = 0
                     print(pain_score)
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
