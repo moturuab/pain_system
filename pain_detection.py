@@ -261,7 +261,7 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 2 and not self.email_sent:
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -274,7 +274,7 @@ class VideoApp:
                             self.txt = None
                         s.send_message(msg)
 
-                if self.pain_count >= 2 and not self.email_sent:
+                if self.pain_count >= 5 and not self.email_sent:
                     self.email_sent = True
                 # terminating the session
                 s.quit()
@@ -287,7 +287,7 @@ class VideoApp:
             if self.connect_to_network(self.ltch_wifi):
                 break
 
-        while True:
+        while self.txt is not None:
             try:
                 # creates SMTP session
                 s = smtplib.SMTP('smtp.gmail.com')
@@ -298,16 +298,15 @@ class VideoApp:
                 # authentication
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
-                print('send email 1')
                 for email in self.to_emails:
                     if (email == self.from_email or (not self.no_email and email != self.from_email)):
-                        print('send email 2')
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(
                             self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
                         msg['To'] = email
                         msg.set_content(self.txt)
+                        self.txt = None
                         s.send_message(msg)
                 # terminating the session
                 s.quit()
@@ -405,13 +404,11 @@ class VideoApp:
         txt += 'Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
         txt += 'Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
         txt += 'Total duration: ' + str(round(difference, 3)) + ' minutes.\n'
-        txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n'
+        txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + ' times.\n'
         #txt += 'Total number of times participant was checked: ' + str(self.check_count) + 'times.\n'
         self.txt = txt
         self.summary_thread = threading.Thread(target=self.send_summary, daemon=True)
         self.summary_thread.start()
-
-        #self.send_email(txt)
 
         self.start_time = None
         self.end_time = None
