@@ -300,7 +300,7 @@ class VideoApp:
                 for email in self.to_emails:
                     if (email == self.from_email or (not self.no_email and email != self.from_email)):
                         msg = EmailMessage()
-                        msg['Subject'] = 'Vision System Alert: Site ' + str(
+                        msg['Subject'] = 'Vision System Alert Summary: Site ' + str(
                             self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
                         msg['To'] = email
@@ -399,7 +399,7 @@ class VideoApp:
         self.log_entry('Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
         self.log_entry('The total duration of this session was ' + str(round(difference, 3)) + ' minutes.\n----------\n', 'full_log.txt')
 
-        txt = 'Participant ' + str(self.participant_number) + '\n'
+        txt = 'Participant ' + str(self.participant_number) + ' Summary\n'
         txt += 'Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
         txt += 'Stopped session: ' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n'
         txt += 'Total duration: ' + str(round(difference, 3)) + ' minutes.\n'
