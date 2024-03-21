@@ -374,7 +374,7 @@ class VideoApp:
         txt += 'Total duration: ' + str(round(difference, 3)) + ' minutes.\n'
         txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n'
         #txt += 'Total number of times participant was checked: ' + str(self.check_count) + 'times.\n'
-        self.send_email(txt)
+        #self.send_email(txt)
 
         self.start_time = None
         self.end_time = None
