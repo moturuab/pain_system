@@ -48,8 +48,6 @@ parser.add_argument('-percent', type=float, default=0.2)
 parser.add_argument('-deviation_seconds', type=int, default=20)
 parser.add_argument('-deviation_stddev', type=float, default=1)
 parser.add_argument('-dynamic_seconds', type=int, default=20)
-#parser.add_argument('-dynamic_seconds', type=int, default=2)
-#parser.add_argument('-dynamic_threshold', type=float, default=0.1)
 parser.add_argument('--no_email', action='store_true', default=False)
 arg_dict = parser.parse_args()
 
@@ -261,7 +259,7 @@ class VideoApp:
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
                 for email in self.to_emails:
-                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 2 and not self.email_sent:
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -274,7 +272,7 @@ class VideoApp:
                             self.txt = None
                         s.send_message(msg)
 
-                if self.pain_count >= 2 and not self.email_sent:
+                if self.pain_count >= 5 and not self.email_sent:
                     self.email_sent = True
                 # terminating the session
                 s.quit()
