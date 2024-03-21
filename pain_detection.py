@@ -244,7 +244,7 @@ class VideoApp:
             except:
                 continue
 
-    def send_email(self, txt=None):
+    def send_email(self):
         while True:
             if self.connect_to_network(self.ltch_wifi):
                 break
@@ -260,10 +260,8 @@ class VideoApp:
                 # authentication
                 s.login(self.from_email, "zdxb nsxv fkir mljf")
 
-                print('send email 1')
                 for email in self.to_emails:
-                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 5 and not self.email_sent:
-                        print('send email 2')
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)) and self.pain_count >= 2 and not self.email_sent:
                         msg = EmailMessage()
                         msg['Subject'] = 'Vision System Alert: Site ' + str(self.location_number) + ', Participant ' + str(self.participant_number)
                         msg['From'] = self.from_email
@@ -276,8 +274,41 @@ class VideoApp:
                             self.txt = None
                         s.send_message(msg)
 
-                if self.pain_count >= 5 and not self.email_sent:
+                if self.pain_count >= 2 and not self.email_sent:
                     self.email_sent = True
+                # terminating the session
+                s.quit()
+                break
+            except:
+                continue
+
+    def send_summary(self):
+        while True:
+            if self.connect_to_network(self.ltch_wifi):
+                break
+
+        while True:
+            try:
+                # creates SMTP session
+                s = smtplib.SMTP('smtp.gmail.com')
+
+                # start TLS for security
+                s.starttls()
+
+                # authentication
+                s.login(self.from_email, "zdxb nsxv fkir mljf")
+
+                print('send email 1')
+                for email in self.to_emails:
+                    if (email == self.from_email or (not self.no_email and email != self.from_email)):
+                        print('send email 2')
+                        msg = EmailMessage()
+                        msg['Subject'] = 'Vision System Alert: Site ' + str(
+                            self.location_number) + ', Participant ' + str(self.participant_number)
+                        msg['From'] = self.from_email
+                        msg['To'] = email
+                        msg.set_content(self.txt)
+                        s.send_message(msg)
                 # terminating the session
                 s.quit()
                 break
@@ -299,7 +330,7 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                        
+
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
                         stddev = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
@@ -377,8 +408,8 @@ class VideoApp:
         txt += 'Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n'
         #txt += 'Total number of times participant was checked: ' + str(self.check_count) + 'times.\n'
         self.txt = txt
-        self.email_thread = threading.Thread(target=self.send_email, daemon=True)
-        self.email_thread.start()
+        self.summary_thread = threading.Thread(target=self.send_summary, daemon=True)
+        self.summary_thread.start()
 
         #self.send_email(txt)
 
@@ -518,6 +549,7 @@ class VideoApp:
         self.video_thread.join()
         self.model_thread.join()
         self.email_thread.join()
+        self.summary_thread.join()
         self.light_thread.join()
         self.vid.release()
     
