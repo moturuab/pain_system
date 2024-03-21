@@ -293,6 +293,8 @@ class VideoApp:
                     self.indices.append(k)
                     try:
                         pain_score = self.pain_detector.predict_pain(self.frame)
+                        if pain_score is np.nan:
+                            pain_score = 0
                     except:
                         pain_score = 0
                     print(pain_score)
