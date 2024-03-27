@@ -338,7 +338,7 @@ class VideoApp:
                         mean = 0
                         std = 0
 
-                    if len(self.indices) % (self.dynamic_seconds * 15) == 0 and (np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) < mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) < self.dynamic_threshold):
+                    if np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold:
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))]])
                         self.dynamic_updates += 1
@@ -353,7 +353,7 @@ class VideoApp:
                         std = 0
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
-                        and all(map(any, repeat(iter([p > self.threshold and p > mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
+                        and all(map(any, repeat(iter([p >= self.threshold and p >= mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
                         self.pain_count += 1
                         self.start_index = k
@@ -392,9 +392,9 @@ class VideoApp:
         self.index = 0
         difference = (self.end_time - self.start_time).total_seconds()/60.0
         self.log_entry(',' + self.end_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + ',' + str(round(difference, 3)), 'summary_log.txt')
-        self.log_entry('Total number of times pain was suspected: ' + str(self.pain_count) + 'times.\n',
+        self.log_entry('Total number of times pain was suspected: ' + str(self.pain_count) + ' times.\n',
                        'full_log.txt')
-        self.log_entry('Total number of times participant was checked: ' + str(self.check_count) + 'times.\n',
+        self.log_entry('Total number of times participant was checked: ' + str(self.check_count) + ' times.\n',
                        'full_log.txt')
         self.log_entry('Total dynamic reference image updates: ' + str(self.dynamic_updates) + '.\n',
                        'full_log.txt')
