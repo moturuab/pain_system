@@ -204,7 +204,15 @@ class VideoApp:
         self.btn_select_participant["state"] = "disabled"
         self.start_time = datetime.datetime.now()
         self.log_entry('\n' + str(self.participant_number) + ',' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3], 'summary_log.txt')
-        self.log_entry('----------\nParticipant ' + str(self.participant_number) + ' (threshold: ' + str(self.threshold) + ')\n', 'full_log.txt')
+        self.log_entry('----------\nParticipant ' + str(self.participant_number), 'full_log.txt')
+        self.log_entry('(threshold: ' + str(self.threshold) + ')\n','full_log.txt')
+        self.log_entry('(seconds: ' + str(self.seconds) + ')\n','full_log.txt')
+        self.log_entry('(percent: ' + str(self.percent) + ')\n','full_log.txt')
+        self.log_entry('(deviation_seconds: ' + str(self.deviation_seconds) + ')\n','full_log.txt')
+        self.log_entry('(deviation_stddev: ' + str(self.deviation_stddev) + ')\n','full_log.txt')
+        self.log_entry('(dynamic_seconds: ' + str(self.dynamic_seconds) + ')\n','full_log.txt')
+        self.log_entry('(dynamic_threshold: ' + str(self.dynamic_threshold) + ')\n','full_log.txt')
+        self.log_entry('(dynamic_stddev: ' + str(self.dynamic_stddev) + ')\n','full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
 
 
