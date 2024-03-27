@@ -214,8 +214,7 @@ class VideoApp:
         self.log_entry('(dynamic_threshold: ' + str(self.dynamic_threshold) + ')\n','full_log.txt')
         self.log_entry('(dynamic_stddev: ' + str(self.dynamic_stddev) + ')\n','full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
-
-
+        
     def turn_on_light(self):
         while True:
             if self.connect_to_network(self.wemo_wifi):
