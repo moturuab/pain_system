@@ -205,7 +205,7 @@ class VideoApp:
         self.start_time = datetime.datetime.now()
         self.log_entry('\n' + str(self.participant_number) + ',' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3], 'summary_log.txt')
         self.log_entry('----------\nParticipant ' + str(self.participant_number), 'full_log.txt')
-        self.log_entry('(threshold: ' + str(self.threshold) + ')\n','full_log.txt')
+        self.log_entry('\n(threshold: ' + str(self.threshold) + ')\n','full_log.txt')
         self.log_entry('(seconds: ' + str(self.seconds) + ')\n','full_log.txt')
         self.log_entry('(percent: ' + str(self.percent) + ')\n','full_log.txt')
         self.log_entry('(deviation_seconds: ' + str(self.deviation_seconds) + ')\n','full_log.txt')
@@ -357,7 +357,7 @@ class VideoApp:
 
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
-                    l2 = []
+
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         l2 = np.array([*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:])
                         l2 = l2[~np.isnan(l2)]
