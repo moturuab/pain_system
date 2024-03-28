@@ -362,7 +362,7 @@ class VideoApp:
                     self.pain_frames.append(self.frame)
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
-                        l2 = list(self.pain_scores)[len(self.pain_scores)-self.deviation_seconds * 15+1:]
+                        l2 = list(*self.pain_scores)[len(self.pain_scores)-self.deviation_seconds * 15+1:]
                         print(l2)
                         mean = np.mean(l2)
                         std = np.std(l2)
