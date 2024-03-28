@@ -348,16 +348,15 @@ class VideoApp:
                         mean = 0
                         std = 0
 
-
-
-                    if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
-                        print('before')
-                        print(len(self.pain_detector.ref_frames))
-                        self.pain_detector.ref_frames.pop(1)
+                    if len(self.pain_scores) > self.dynamic_seconds * 15 and len(self.index) % 15 == 0 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
+                        before = len(self.pain_detector.ref_frames)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
-                        self.dynamic_updates += 1
-                        print('after')
-                        print(len(self.pain_detector.ref_frames))
+                        after = len(self.pain_detector.ref_frames)
+                        print(before)
+                        print(after)
+                        if before != after:
+                            self.pain_detector.ref_frames.pop(1)
+                            self.dynamic_updates += 1
 
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
