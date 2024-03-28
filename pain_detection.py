@@ -341,7 +341,7 @@ class VideoApp:
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         l1 = [*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:]
-                        print(l1)
+                        print(np.nan in l1)
                         mean = np.mean(l1)
                         std = np.std(l1)
                         print('mean')
@@ -351,7 +351,6 @@ class VideoApp:
                     else:
                         mean = 0
                         std = 0
-
 
                     print(len(self.pain_detector.ref_frames))
 
@@ -364,7 +363,7 @@ class VideoApp:
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         l2 = [*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:]
-                        print(l2)
+                        print(np.nan in l2)
                         mean = np.mean(l2)
                         std = np.std(l2)
                         print('mean')
