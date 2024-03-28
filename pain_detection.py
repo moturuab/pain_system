@@ -340,8 +340,10 @@ class VideoApp:
                     print(pain_score)
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
-                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
-                        std = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
+                        l1 = list(*self.pain_scores)[len(self.pain_scores) - self.dynamic_seconds * 15 + 1:]
+                        print(l1)
+                        mean = np.mean(l1)
+                        std = np.std(l1)
                     else:
                         mean = 0
                         std = 0
@@ -352,16 +354,18 @@ class VideoApp:
                     print(std)
                     print(len(self.pain_detector.ref_frames))
 
-                    if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold):
+                    if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
                         self.pain_detector.ref_frames.pop(1)
-                        self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))]])
+                        self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
                         self.dynamic_updates += 1
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
-                        mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 15+1, len(self.pain_scores))))
-                        std = np.std(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.deviation_seconds * 15+1, len(self.pain_scores))))
+                        l2 = list(self.pain_scores)[len(self.pain_scores)-self.deviation_seconds * 15+1:]
+                        print(l2)
+                        mean = np.mean(l2)
+                        std = np.std(l2)
                     else:
                         mean = 0
                         std = 0
