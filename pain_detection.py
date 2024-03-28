@@ -214,7 +214,7 @@ class VideoApp:
         self.log_entry('(dynamic_threshold: ' + str(self.dynamic_threshold) + ')\n','full_log.txt')
         self.log_entry('(dynamic_stddev: ' + str(self.dynamic_stddev) + ')\n','full_log.txt')
         self.log_entry('Started session: ' + self.start_time.strftime("%b %d %Y %H:%M:%S.%f")[:-3] + '.\n', 'full_log.txt')
-        
+
     def turn_on_light(self):
         while True:
             if self.connect_to_network(self.wemo_wifi):
@@ -337,6 +337,7 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
+                    print(pain_score)
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         mean = np.mean(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))
@@ -344,6 +345,11 @@ class VideoApp:
                     else:
                         mean = 0
                         std = 0
+                        
+                    print('mean')
+                    print(mean)
+                    print('std')
+                    print(std)
 
                     if np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold:
                         self.pain_detector.ref_frames.pop(1)
@@ -358,6 +364,11 @@ class VideoApp:
                     else:
                         mean = 0
                         std = 0
+
+                    print('mean')
+                    print(mean)
+                    print('std')
+                    print(std)
 
                     if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
                         and all(map(any, repeat(iter([p >= self.threshold and p >= mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
