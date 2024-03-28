@@ -354,7 +354,6 @@ class VideoApp:
                         print('before')
                         print(len(self.pain_detector.ref_frames))
                         self.pain_detector.ref_frames.pop(1)
-                        print([self.pain_frames[np.argmin(l1)]])
                         self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
                         self.dynamic_updates += 1
                         print('after')
@@ -371,8 +370,6 @@ class VideoApp:
                     else:
                         mean = 0
                         std = 0
-
-
 
                     if not self.pain_moment and len(self.pain_scores) > self.seconds * 15 \
                         and all(map(any, repeat(iter([p >= self.threshold and p >= mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
