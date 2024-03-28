@@ -340,7 +340,7 @@ class VideoApp:
                     print(pain_score)
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
-                        l1 = [*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:]
+                        l1 = np.array([*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:])
                         l1 = l1[~np.isnan(l1)]
                         print(np.nan in l1)
                         mean = np.mean(l1)
@@ -368,7 +368,7 @@ class VideoApp:
                     self.pain_frames.append(self.frame)
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
-                        l2 = [*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:]
+                        l2 = np.array([*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:])
                         l2 = l2[~np.isnan(l2)]
                         print(np.nan in l2)
                         mean = np.mean(l2)
