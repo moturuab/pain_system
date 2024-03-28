@@ -341,6 +341,7 @@ class VideoApp:
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         l1 = [*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:]
+                        l1 = l1[~np.isnan(l1)]
                         print(np.nan in l1)
                         mean = np.mean(l1)
                         std = np.std(l1)
@@ -352,17 +353,23 @@ class VideoApp:
                         mean = 0
                         std = 0
 
-                    print(len(self.pain_detector.ref_frames))
+
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
+                        print('before')
+                        print(len(self.pain_detector.ref_frames))
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
                         self.dynamic_updates += 1
+                        print('after')
+                        print(len(self.pain_detector.ref_frames))
+
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
 
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         l2 = [*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:]
+                        l2 = l2[~np.isnan(l2)]
                         print(np.nan in l2)
                         mean = np.mean(l2)
                         std = np.std(l2)
