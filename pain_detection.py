@@ -345,13 +345,13 @@ class VideoApp:
                     else:
                         mean = 0
                         std = 0
-                        
+
                     print('mean')
                     print(mean)
                     print('std')
                     print(std)
 
-                    if np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold:
+                    if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold):
                         self.pain_detector.ref_frames.pop(1)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores))))]])
                         self.dynamic_updates += 1
@@ -370,7 +370,7 @@ class VideoApp:
                     print('std')
                     print(std)
 
-                    if not self.pain_moment and len(self.pain_scores) >= self.seconds * 15 \
+                    if not self.pain_moment and len(self.pain_scores) > self.seconds * 15 \
                         and all(map(any, repeat(iter([p >= self.threshold and p >= mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
                         self.pain_moment = True
                         self.pain_count += 1
