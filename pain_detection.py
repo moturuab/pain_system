@@ -337,7 +337,6 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-                    print(pain_score)
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         l1 = np.array([*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:])
@@ -348,12 +347,10 @@ class VideoApp:
                         mean = 0
                         std = 0
 
-                    if len(self.pain_scores) > self.dynamic_seconds * 15 and self.index % 15 == 0 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
+                    if len(l1) > 0 and len(self.pain_scores) > self.dynamic_seconds * 15 and self.index % 30 == 0 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
                         before = len(self.pain_detector.ref_frames)
                         self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
                         after = len(self.pain_detector.ref_frames)
-                        print(before)
-                        print(after)
                         if before != after:
                             self.pain_detector.ref_frames.pop(1)
                             self.dynamic_updates += 1
