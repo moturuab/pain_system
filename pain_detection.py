@@ -350,6 +350,7 @@ class VideoApp:
                     print(mean)
                     print('std')
                     print(std)
+                    print(len(self.pain_detector.ref_frames))
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= mean - self.dynamic_stddev * std or np.min(deque(itertools.islice(self.pain_scores, len(self.pain_scores)-self.dynamic_seconds * 15+1, len(self.pain_scores)))) <= self.dynamic_threshold):
                         self.pain_detector.ref_frames.pop(1)
