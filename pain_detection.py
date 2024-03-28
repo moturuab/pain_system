@@ -344,14 +344,15 @@ class VideoApp:
                         print(l1)
                         mean = np.mean(l1)
                         std = np.std(l1)
+                        print('mean')
+                        print(mean)
+                        print('std')
+                        print(std)
                     else:
                         mean = 0
                         std = 0
 
-                    print('mean')
-                    print(mean)
-                    print('std')
-                    print(std)
+
                     print(len(self.pain_detector.ref_frames))
 
                     if len(self.pain_scores) > self.dynamic_seconds * 15 and (np.min(l1) <= mean - self.dynamic_stddev * std or np.min(l1) <= self.dynamic_threshold):
@@ -366,14 +367,15 @@ class VideoApp:
                         print(l2)
                         mean = np.mean(l2)
                         std = np.std(l2)
+                        print('mean')
+                        print(mean)
+                        print('std')
+                        print(std)
                     else:
                         mean = 0
                         std = 0
 
-                    print('mean')
-                    print(mean)
-                    print('std')
-                    print(std)
+
 
                     if not self.pain_moment and len(self.pain_scores) > self.seconds * 15 \
                         and all(map(any, repeat(iter([p >= self.threshold and p >= mean + self.deviation_stddev * std and p is not np.nan for p in itertools.islice(self.pain_scores, len(self.pain_scores)-self.seconds * 15+1, len(self.pain_scores))]), int(self.seconds * 15 * self.percent)))):
