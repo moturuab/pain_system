@@ -354,6 +354,7 @@ class VideoApp:
                         print('before')
                         print(len(self.pain_detector.ref_frames))
                         self.pain_detector.ref_frames.pop(1)
+                        print([self.pain_frames[np.argmin(l1)]])
                         self.pain_detector.add_references([self.pain_frames[np.argmin(l1)]])
                         self.dynamic_updates += 1
                         print('after')
