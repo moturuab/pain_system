@@ -337,7 +337,7 @@ class VideoApp:
                         pain_score = self.pain_detector.predict_pain(self.frame)
                     except:
                         pain_score = np.nan
-
+                    l1 = []
                     if len(self.pain_scores) > self.dynamic_seconds * 15:
                         l1 = np.array([*self.pain_scores][len(self.pain_scores) - self.dynamic_seconds * 15 + 1:])
                         l1 = l1[~np.isnan(l1)]
@@ -357,7 +357,7 @@ class VideoApp:
 
                     self.pain_scores.append(pain_score)
                     self.pain_frames.append(self.frame)
-
+                    l2 = []
                     if len(self.pain_scores) > self.deviation_seconds * 15:
                         l2 = np.array([*self.pain_scores][len(self.pain_scores)-self.deviation_seconds * 15+1:])
                         l2 = l2[~np.isnan(l2)]
