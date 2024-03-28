@@ -223,8 +223,9 @@ class VideoApp:
             try:
                 self.devices = pywemo.discover_devices()
                 self.devices[0].on()
-                self.email_thread = threading.Thread(target=self.send_email, daemon=True)
-                self.email_thread.start()
+                if self.pain_count >= 5 and not self.email_sent:
+                    self.email_thread = threading.Thread(target=self.send_email, daemon=True)
+                    self.email_thread.start()
                 break
             except:
                 continue
