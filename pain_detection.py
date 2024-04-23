@@ -382,9 +382,6 @@ class VideoApp:
                         self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                         self.light_thread.start()
 
-                    print(not self.baseline)
-                    print(self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1)
-
                     if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
                         self.end_index = k
 
@@ -410,12 +407,8 @@ class VideoApp:
                             except ValueError:
                                 continue
                             break
-                        j = self.indices.index(k)
-                        j_ = self.count.index(k)
-                        print(i)
-                        print(i_)
-                        print(j)
-                        print(j_)
+                        j = self.indices.index(k)+1
+                        j_ = self.count.index(k)+1
                         self.save_video(deque(itertools.islice(self.frames, i_, j_)), deque(itertools.islice(self.pain_scores, i, j)), deque(itertools.islice(self.indices, i, j)), deque(itertools.islice(self.times, i, j)), baseline_text='baseline_')
                         self.baseline = True
 
