@@ -382,12 +382,6 @@ class VideoApp:
                         self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                         self.light_thread.start()
 
-                    print(self.end_index - self.start_index)
-                    print(self.MAX_FRAMES / 2)
-                    print(self.count[-1] - self.count[0])
-                    print(self.MAX_FRAMES - 1)
-                    print()
-
                     if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
                         self.end_index = k
 
@@ -405,7 +399,7 @@ class VideoApp:
                         self.after_pain_count = 0
                         self.pain_moment = False
 
-                    elif not self.baseline and self.end_index - self.start_index >= self.MAX_FRAMES/2 and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
+                    elif not self.baseline and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
                         for c in self.count:
                             try:
                                 i = self.indices.index(c)
