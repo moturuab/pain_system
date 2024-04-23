@@ -410,8 +410,8 @@ class VideoApp:
                             except ValueError:
                                 continue
                             break
-                        j = self.indices.index(self.count[-1])+1
-                        j_ = self.count.index(self.count[-1])+1
+                        j = self.indices.index(k)
+                        j_ = self.count.index(k)
                         print(i)
                         print(i_)
                         print(j)
