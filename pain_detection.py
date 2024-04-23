@@ -399,7 +399,7 @@ class VideoApp:
                         self.after_pain_count = 0
                         self.pain_moment = False
 
-                    elif not self.baseline and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
+                    elif not self.pain_moment and not self.baseline and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
                         for c in self.count:
                             try:
                                 i = self.indices.index(c)
