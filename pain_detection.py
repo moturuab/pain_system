@@ -382,9 +382,7 @@ class VideoApp:
                         self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                         self.light_thread.start()
 
-                    print(self.count[-1] - self.count[0])
-                    print(self.MAX_FRAMES - 1)
-                    print(self.baseline)
+                    print(not self.baseline)
                     print(self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1)
 
                     if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
@@ -412,8 +410,8 @@ class VideoApp:
                             except ValueError:
                                 continue
                             break
-                        j = self.indices.index(self.end_index)+1
-                        j_ = self.count.index(self.end_index)+1
+                        j = self.indices.index(self.count[-1])+1
+                        j_ = self.count.index(self.count[-1])+1
                         print(i)
                         print(i_)
                         print(j)
