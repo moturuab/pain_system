@@ -382,6 +382,12 @@ class VideoApp:
                         self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                         self.light_thread.start()
 
+                    print(self.end_index - self.start_index)
+                    print(self.MAX_FRAMES / 2)
+                    print(self.count[-1] - self.count[0])
+                    print(self.MAX_FRAMES - 1)
+                    print()
+
                     if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
                         self.end_index = k
 
@@ -469,7 +475,7 @@ class VideoApp:
                                              str(len(glob.glob1(self.participant, "*.mp4")) + 1) + '.mp4'),
                                 cv2.VideoWriter_fourcc(*'mp4v'), 15, (width, height))
 
-        self.text.config(text='Session ongoing: saving video.')
+        self.text.config(text='Session ongoing:' + baseline_text + ' saving video.')
 
         for frame in list(frames):
             video.write(frame)
