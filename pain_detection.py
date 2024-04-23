@@ -382,6 +382,11 @@ class VideoApp:
                         self.light_thread = threading.Thread(target=self.turn_on_light, daemon=True)
                         self.light_thread.start()
 
+                    print(self.count[-1] - self.count[0])
+                    print(self.MAX_FRAMES - 1)
+                    print(self.baseline)
+                    print(self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1)
+
                     if self.pain_moment and (self.end_index - self.start_index < self.MAX_FRAMES/2 or self.count[-1] - self.count[0] < self.MAX_FRAMES - 1):
                         self.end_index = k
 
@@ -409,6 +414,10 @@ class VideoApp:
                             break
                         j = self.indices.index(self.end_index)+1
                         j_ = self.count.index(self.end_index)+1
+                        print(i)
+                        print(i_)
+                        print(j)
+                        print(j_)
                         self.save_video(deque(itertools.islice(self.frames, i_, j_)), deque(itertools.islice(self.pain_scores, i, j)), deque(itertools.islice(self.indices, i, j)), deque(itertools.islice(self.times, i, j)), baseline_text='baseline_')
                         self.baseline = True
 
@@ -469,7 +478,10 @@ class VideoApp:
                                              str(len(glob.glob1(self.participant, "*.mp4")) + 1) + '.mp4'),
                                 cv2.VideoWriter_fourcc(*'mp4v'), 15, (width, height))
 
-        self.text.config(text='Session ongoing:' + baseline_text + ' saving video.')
+        if baseline_text == '':
+            self.text.config(text='Session ongoing: saving video.')
+        else:
+            self.text.config(text='Session ongoing: saving baseline video.')
 
         for frame in list(frames):
             video.write(frame)
