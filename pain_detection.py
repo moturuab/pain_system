@@ -171,6 +171,7 @@ class VideoApp:
         self.email_sent = False
         self.after_pain_count = 0
         self.pain_moment = False
+        self.baseline = False
 
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.9, min_tracking_confidence=0.9)
@@ -398,6 +399,19 @@ class VideoApp:
                         self.after_pain_count = 0
                         self.pain_moment = False
 
+                    elif not self.baseline and self.end_index - self.start_index >= self.MAX_FRAMES/2 and self.count[-1] - self.count[0] >= self.MAX_FRAMES - 1:
+                        for c in self.count:
+                            try:
+                                i = self.indices.index(c)
+                                i_ = self.count.index(c)
+                            except ValueError:
+                                continue
+                            break
+                        j = self.indices.index(self.end_index)+1
+                        j_ = self.count.index(self.end_index)+1
+                        self.save_video(deque(itertools.islice(self.frames, i_, j_)), deque(itertools.islice(self.pain_scores, i, j)), deque(itertools.islice(self.indices, i, j)), deque(itertools.islice(self.times, i, j)), baseline_text='baseline_')
+                        self.baseline = True
+
     def stop_video(self):
         self.running = False
         self.btn_start["state"] = "normal"
@@ -446,11 +460,12 @@ class VideoApp:
         self.after_pain_count = 0
         self.dynamic_updates = 0
         self.pain_moment = False
+        self.baseline = False
 
-    def save_video(self, frames, pain_scores, indices, times):
+    def save_video(self, frames, pain_scores, indices, times, baseline_text=''):
         height, width, layers = frames[0].shape
 
-        video = cv2.VideoWriter(os.path.join(self.participant, 'video_' +
+        video = cv2.VideoWriter(os.path.join(self.participant, baseline_text + 'video_' +
                                              str(len(glob.glob1(self.participant, "*.mp4")) + 1) + '.mp4'),
                                 cv2.VideoWriter_fourcc(*'mp4v'), 15, (width, height))
 
@@ -469,7 +484,8 @@ class VideoApp:
         self.text.config(text='Session ongoing.')
 
         with open(os.path.join(self.participant,
-                               'pain_scores_' + str(len(glob.glob1(self.participant, "*.csv")) + 1) + '.csv'), 'w') as f:
+                               baseline_text + 'pain_scores_' + str(len(glob.glob1(
+                                   self.participant, "*.csv")) + 1) + '.csv'), 'w') as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(['time', 'index', 'frame', 'pain_score'])
             writer.writerows(zip(times, inds, frms, pain_scores))
