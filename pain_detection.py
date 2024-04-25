@@ -622,6 +622,8 @@ if __name__ == "__main__":
         location_number = '1'
     elif location == 'CentralHavenSaskatoon':
         location_number = '2'
+    elif location == 'Sherbrooke':
+        location_number = '3'
     app = VideoApp(root, location + " Vision System", ssd, model, location, location_number, threshold, seconds, percent, deviation_seconds, deviation_stddev, dynamic_seconds, dynamic_threshold, dynamic_stddev, no_email, ltch_wifi, wemo_wifi, from_email, to_emails)
     root.protocol('WM_DELETE_WINDOW', app.on_closing)
     root.mainloop()
